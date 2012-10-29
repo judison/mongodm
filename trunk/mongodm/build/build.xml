@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE project>
+<project name="MongODM" default="build">
+
+	<target name="build">
+		<delete file="mongodm.jar" failonerror="false" />
+		<delete file="mongodm-src.zip" failonerror="false" />
+		<delete dir="bin" failonerror="false" />
+		<mkdir dir="bin" />
+		<javac destdir="bin/">
+			<classpath path="../libs/mongo-2.9.1.jar" />
+			<src path="../src/" />
+		</javac>
+		<jar destfile="mongodm.jar">
+			<fileset dir="bin" />
+		</jar>
+		<jar destfile="mongodm-src.jar">
+			<fileset dir="../src" />
+		</jar>
+		<delete dir="bin" failonerror="false" />
+	</target>
+
+	<target name="build_eclipse">
+		<delete file="mongodm.jar" failonerror="false" />
+		<delete file="mongodm-src.zip" failonerror="false" />
+		<jar destfile="mongodm.jar">
+			<fileset dir="../bin" />
+		</jar>
+		<jar destfile="mongodm-src.zip">
+			<fileset dir="../src" />
+		</jar>
+	</target>
+
+</project>
