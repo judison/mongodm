@@ -85,6 +85,15 @@ public class MCollection<T> {
 		}
 	}
 
+	public T findOne(Query query) throws MException {
+		try {
+			DBObject data = coll.findOne(query.toDBObject());
+			return mapLoad(data);
+		} catch (MongoException e) {
+			throw new MException(e);
+		}
+	}
+
 	public MCursor<T> find() throws MException {
 		try {
 			DBCursor cursor = coll.find();
@@ -97,6 +106,15 @@ public class MCollection<T> {
 	public MCursor<T> find(DBObject query) throws MException {
 		try {
 			DBCursor cursor = coll.find(query);
+			return new MCursor<T>(this, cursor);
+		} catch (MongoException e) {
+			throw new MException(e);
+		}
+	}
+
+	public MCursor<T> find(Query query) throws MException {
+		try {
+			DBCursor cursor = coll.find(query.toDBObject());
 			return new MCursor<T>(this, cursor);
 		} catch (MongoException e) {
 			throw new MException(e);
