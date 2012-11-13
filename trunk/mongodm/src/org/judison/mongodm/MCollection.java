@@ -143,6 +143,16 @@ public class MCollection<T> {
 		}
 	}
 
+	public void remove(T object) throws MException {
+		DBObject data = new BasicDBObject();
+		mapper.save(object, data);
+		coll.remove(new BasicDBObject("_id", data.get("_id")));
+	}
+
+	public void removeById(Object id) throws MException {
+		coll.remove(new BasicDBObject("_id", id));
+	}
+
 	T mapLoad(DBObject data) {
 		if (data == null)
 			return null;
