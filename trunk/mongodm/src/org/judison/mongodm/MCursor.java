@@ -35,14 +35,22 @@ public class MCursor<T> implements Closeable {
 	private final DBCursor dbCursor;
 	private T last = null;
 
-	MCursor(MCollection<T> coll, DBCursor dbCursor) {
+	MCursor(MCollection<T> coll, Class<T> cls, DBCursor dbCursor) {
 		this.coll = coll;
 		this.dbCursor = dbCursor;
+		coll.mdb.onCursorCreated(this, cls);
+	}
+
+	@Override
+	protected void finalize() throws Throwable {
+		close();
+		super.finalize();
 	}
 
 	@Override
 	public void close() {
 		dbCursor.close();
+		coll.mdb.onCursorClosed(this);
 	}
 
 	public boolean hasNext() {

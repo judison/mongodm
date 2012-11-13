@@ -25,7 +25,9 @@
 package org.judison.mongodm;
 
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 
@@ -101,4 +103,25 @@ public class MDB {
 		}
 	}
 
+	private List<MCursor<?>> cursors = new ArrayList<MCursor<?>>();
+
+	protected <T> void onCursorCreated(MCursor<T> cursor, Class<T> cls) {
+		synchronized (cursors) {
+			cursors.add(cursor);
+		}
+	}
+
+	protected <T> void onCursorClosed(MCursor<T> cursor) {
+		synchronized (cursors) {
+			cursors.remove(cursor);
+		}
+	}
+
+	public void closeCursors() {
+		synchronized (cursors) {
+			for (MCursor<?> cursor: cursors.toArray(new MCursor<?>[cursors.size()])) {
+				cursor.close();
+			}
+		}
+	}
 }
