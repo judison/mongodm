@@ -43,19 +43,23 @@ public class MCollection<T> {
 		this.mdb = mdb;
 		this.mapper = mdb.getMapper();
 		this.cls = cls;
-		try {
-			this.typeInfo = mapper.getTypeInfo(cls);
-		} catch (Throwable e) {
-			throw new MException(e);
-		}
-		this.coll = mdb.getMongoDB().getCollection(typeInfo.entityName);
-
-		for (IndexInfo idx: typeInfo.indexes)
+		if (cls == DBObject.class)
+			this.typeInfo = null;
+		else
 			try {
-				coll.ensureIndex(idx.keys, idx.options);
-			} catch (MongoException e) {
+				this.typeInfo = mapper.getTypeInfo(cls);
+			} catch (Throwable e) {
 				throw new MException(e);
 			}
+		this.coll = mdb.getMongoDB().getCollection(typeInfo.entityName);
+
+		if (typeInfo != null)
+			for (IndexInfo idx: typeInfo.indexes)
+				try {
+					coll.ensureIndex(idx.keys, idx.options);
+				} catch (MongoException e) {
+					throw new MException(e);
+				}
 	}
 
 	public T load(Object id) throws MException {
@@ -123,21 +127,29 @@ public class MCollection<T> {
 
 	public void save(T object) throws MException {
 		try {
-			DBObject data = mdb.getLoadedData(object);
-			if (data == null)
-				data = new BasicDBObject();
+			if (cls == DBObject.class) {
+				DBObject data = (DBObject)object;
+				WriteResult res = coll.save(data);
+				String error = res.getError();
+				if (error != null)
+					throw new MException(error);
+			} else {
+				DBObject data = mdb.getLoadedData(object);
+				if (data == null)
+					data = new BasicDBObject();
 
-			mapper.save(object, data);
+				mapper.save(object, data);
 
-			WriteResult res = coll.save(data);
+				WriteResult res = coll.save(data);
 
-			String error = res.getError();
-			if (error != null)
-				throw new MException(error);
+				String error = res.getError();
+				if (error != null)
+					throw new MException(error);
 
-			mapper.load(object, data);
+				mapper.load(object, data);
 
-			mdb.putLoadedData(object, data);
+				mdb.putLoadedData(object, data);
+			}
 		} catch (MongoException e) {
 			throw new MException(e);
 		}
@@ -153,12 +165,14 @@ public class MCollection<T> {
 		coll.remove(new BasicDBObject("_id", id));
 	}
 
+	@SuppressWarnings("unchecked")
 	T mapLoad(DBObject data) {
+		if (cls == DBObject.class)
+			return (T)data;
 		if (data == null)
 			return null;
 		else
 			try {
-				@SuppressWarnings("unchecked")
 				T object = (T)typeInfo.constructor.newInstance();
 				mapper.load(object, data);
 				mdb.putLoadedData(object, data);
