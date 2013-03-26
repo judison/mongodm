@@ -165,6 +165,14 @@ public class MCollection<T> {
 		coll.remove(new BasicDBObject("_id", id));
 	}
 
+	public long count() {
+		return coll.count();
+	}
+
+	public long count(Query query) {
+		return coll.count(query.toDBObject());
+	}
+
 	@SuppressWarnings("unchecked")
 	T mapLoad(DBObject data) {
 		if (cls == DBObject.class)
