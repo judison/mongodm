@@ -78,8 +78,14 @@ public class Query {
 
 	private BasicDBObject conds = new BasicDBObject();
 
-	protected Query() {
+	public Query() {}
 
+	public Query(String condition, Object value) {
+		filter(condition, value);
+	}
+
+	public Query(String prop, Operator oper, Object value) {
+		filter(prop, oper, value);
 	}
 
 	protected Operator fop(String operator) {
@@ -119,7 +125,7 @@ public class Query {
 
 	public Query filter(String condition, Object value) {
 		String[] parts = condition.trim().split(" ");
-		if (parts.length < 1 || parts.length > 6)
+		if (parts.length < 1 || parts.length > 2)
 			throw new IllegalArgumentException("'" + condition + "' is not a legal filter condition");
 
 		String prop = parts[0].trim();
@@ -141,6 +147,30 @@ public class Query {
 			((Map<String, Object>)inner).put(oper.value, value);
 		}
 		return this;
+	}
+
+	public Query equal(String prop, Object value) {
+		return filter(prop, Operator.EQUAL, value);
+	}
+
+	public Query notEqual(String prop, Object value) {
+		return filter(prop, Operator.NOT_EQUAL, value);
+	}
+
+	public Query greater(String prop, Object value) {
+		return filter(prop, Operator.GREATER_THAN, value);
+	}
+
+	public Query greaterOrEqual(String prop, Object value) {
+		return filter(prop, Operator.GREATER_THAN_OR_EQUAL, value);
+	}
+
+	public Query less(String prop, Object value) {
+		return filter(prop, Operator.LESS_THAN, value);
+	}
+
+	public Query lessOrEqual(String prop, Object value) {
+		return filter(prop, Operator.LESS_THAN_OR_EQUAL, value);
 	}
 
 	public Query exists(String prop) {
