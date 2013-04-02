@@ -40,11 +40,13 @@ import java.util.Vector;
 
 import org.bson.types.BasicBSONList;
 import org.judison.mongodm.PropertyInfo.Type;
+import org.judison.mongodm.converter.DBObjectConverter;
 import org.judison.mongodm.converter.DateConverter;
 import org.judison.mongodm.converter.NumberConverter;
 import org.judison.mongodm.converter.PassThruConverter;
 import org.judison.mongodm.converter.TypeConverter;
 
+import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
 
@@ -79,6 +81,12 @@ public class Mapper {
 
 		for (Class<?> cls: PassThruConverter.CLASSES)
 			registerTypeConverter(cls, PassThruConverter.INSTANCE);
+
+		DBObjectConverter dbObjectConverter = DBObjectConverter.INSTANCE;
+		registerTypeConverter(DBObject.class, dbObjectConverter);
+		registerTypeConverter(BasicDBObject.class, dbObjectConverter);
+		registerTypeConverter(BasicDBList.class, dbObjectConverter);
+		registerTypeConverter(BasicBSONList.class, dbObjectConverter);
 	}
 
 	private Map<Class<?>, TypeInfo> typeInfos = new HashMap<Class<?>, TypeInfo>();
