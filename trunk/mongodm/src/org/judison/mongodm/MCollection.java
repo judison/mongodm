@@ -40,6 +40,10 @@ public class MCollection<T> {
 	final Class<T> cls;
 
 	public MCollection(MDB mdb, Class<T> cls) throws MException {
+		this(mdb, cls, null);
+	}
+
+	public MCollection(MDB mdb, Class<T> cls, String entityName) throws MException {
 		this.mdb = mdb;
 		this.mapper = mdb.getMapper();
 		this.cls = cls;
@@ -51,7 +55,9 @@ public class MCollection<T> {
 			} catch (Throwable e) {
 				throw new MException(e);
 			}
-		this.coll = mdb.getMongoDB().getCollection(typeInfo.entityName);
+		if (entityName == null)
+			entityName = typeInfo.entityName;
+		this.coll = mdb.getMongoDB().getCollection(entityName);
 
 		if (typeInfo != null)
 			for (IndexInfo idx: typeInfo.indexes)

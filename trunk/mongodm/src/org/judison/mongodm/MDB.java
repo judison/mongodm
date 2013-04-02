@@ -40,7 +40,7 @@ public class MDB {
 
 	private final DB database;
 	private final Mapper mapper;
-	private Map<Class<?>, MCollection<?>> collections = new HashMap<Class<?>, MCollection<?>>();
+	private Map<Object, MCollection<?>> collections = new HashMap<Object, MCollection<?>>();
 
 	public MDB(String url) throws UnknownHostException {
 		this(Mongo.connect(new DBAddress(url)), new Mapper());
@@ -80,6 +80,18 @@ public class MDB {
 			if (coll == null) {
 				coll = new MCollection<T>(this, cls);
 				collections.put(cls, coll);
+			}
+			return coll;
+		}
+	}
+
+	public MCollection<DBObject> getCollection(String name) throws MException {
+		synchronized (collections) {
+			@SuppressWarnings("unchecked")
+			MCollection<DBObject> coll = (MCollection<DBObject>)collections.get(name);
+			if (coll == null) {
+				coll = new MCollection<DBObject>(this, DBObject.class, name);
+				collections.put(name, coll);
 			}
 			return coll;
 		}
