@@ -25,20 +25,23 @@
 package org.judison.mongodm;
 
 import java.io.Closeable;
+import java.util.Iterator;
 
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 
-public class MCursor<T> implements Closeable {
+public class MCursor<T> implements Iterable<T>, Iterator<T>, Closeable {
 
 	private final MCollection<?> coll;
 	private final DBCursor dbCursor;
 	private final boolean dbObj;
+	private final Class<T> cls;
 	private T last = null;
 
 	MCursor(MCollection<?> coll, Class<T> cls, DBCursor dbCursor, boolean dbObj) {
 		this.coll = coll;
 		this.dbCursor = dbCursor;
+		this.cls = cls;
 		coll.mdb.onCursorCreated(this, cls);
 		this.dbObj = dbObj;
 	}
@@ -55,10 +58,12 @@ public class MCursor<T> implements Closeable {
 		coll.mdb.onCursorClosed(this);
 	}
 
+	@Override
 	public boolean hasNext() {
 		return dbCursor.hasNext();
 	}
 
+	@Override
 	@SuppressWarnings("unchecked")
 	public T next() {
 		DBObject data = dbCursor.next();
@@ -71,6 +76,22 @@ public class MCursor<T> implements Closeable {
 
 	public T getLast() {
 		return last;
+	}
+
+	@Override
+	public Iterator<T> iterator() {
+		return copy();
+	}
+
+	private MCursor<T> copy() {
+		MCursor<T> copy = new MCursor<T>(coll, cls, dbCursor.copy(), dbObj);
+		return copy;
+	}
+
+	@Override
+	@Deprecated
+	public void remove() {
+		throw new UnsupportedOperationException("Can't remove from a MCursor");
 	}
 
 }
