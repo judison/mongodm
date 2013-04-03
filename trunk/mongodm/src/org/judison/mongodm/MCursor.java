@@ -31,14 +31,16 @@ import com.mongodb.DBObject;
 
 public class MCursor<T> implements Closeable {
 
-	private final MCollection<T> coll;
+	private final MCollection<?> coll;
 	private final DBCursor dbCursor;
+	private final boolean dbObj;
 	private T last = null;
 
-	MCursor(MCollection<T> coll, Class<T> cls, DBCursor dbCursor) {
+	MCursor(MCollection<?> coll, Class<T> cls, DBCursor dbCursor, boolean dbObj) {
 		this.coll = coll;
 		this.dbCursor = dbCursor;
 		coll.mdb.onCursorCreated(this, cls);
+		this.dbObj = dbObj;
 	}
 
 	@Override
@@ -57,9 +59,13 @@ public class MCursor<T> implements Closeable {
 		return dbCursor.hasNext();
 	}
 
+	@SuppressWarnings("unchecked")
 	public T next() {
 		DBObject data = dbCursor.next();
-		last = coll.mapLoad(data);
+		if (dbObj)
+			last = (T)data;
+		else
+			last = (T)coll.mapLoad(data);
 		return last;
 	}
 
