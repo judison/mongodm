@@ -143,6 +143,12 @@ public class MCollection<T> {
 		}
 	}
 
+	private void checkResult(WriteResult res) throws MException {
+		String error = res.getError();
+		if (error != null)
+			throw new MException(error);
+	}
+
 	public void save(T object) throws MException {
 		try {
 			if (cls == DBObject.class) {
@@ -160,9 +166,7 @@ public class MCollection<T> {
 
 				WriteResult res = coll.save(data);
 
-				String error = res.getError();
-				if (error != null)
-					throw new MException(error);
+				checkResult(res);
 
 				mapper.load(object, data);
 
@@ -173,14 +177,26 @@ public class MCollection<T> {
 		}
 	}
 
+	public int update(DBObject query, DBObject update) throws MException {
+		return update(query, update, false, false);
+	}
+
+	public int update(DBObject query, DBObject update, boolean upsert, boolean multi) throws MException {
+		WriteResult res = coll.update(query, update, upsert, multi);
+		checkResult(res);
+		return res.getN();
+	}
+
 	public void remove(T object) throws MException {
 		DBObject data = new BasicDBObject();
 		mapper.save(object, data);
-		coll.remove(new BasicDBObject("_id", data.get("_id")));
+		WriteResult res = coll.remove(new BasicDBObject("_id", data.get("_id")));
+		checkResult(res);
 	}
 
 	public void removeById(Object id) throws MException {
-		coll.remove(new BasicDBObject("_id", id));
+		WriteResult res = coll.remove(new BasicDBObject("_id", id));
+		checkResult(res);
 	}
 
 	public long count() {
