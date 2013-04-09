@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, Judison Oliveira Gil Filho <judison@gmail.com>
+ * Copyright (c) 2013, Judison Oliveira Gil Filho <judison@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -27,43 +27,37 @@
  */
 package org.judison.mongodm;
 
-import org.judison.mongodm.annotations.Index;
-
 import com.mongodb.BasicDBObject;
-import com.mongodb.DBCollection;
+import com.mongodb.DBObject;
 
-final class IndexInfo {
+public class Projection {
 
-	final BasicDBObject keys;
-	final BasicDBObject options;
+	private BasicDBObject proj = new BasicDBObject();
 
-	public IndexInfo(String name, String[] fields, boolean unique, boolean sparse) {
-		keys = parseFields(fields);
-		options = new BasicDBObject();
-		if (unique)
-			options.put("unique", true);
-		if (sparse)
-			options.put("sparse", true);
+	public Projection() {}
 
-		if (name == null || name.isEmpty())
-			name = DBCollection.genIndexName(keys);
-
-		options.put("name", name);
+	public Projection(String... fields) {
+		add(fields);
 	}
 
-	public IndexInfo(Index index) {
-		this(index.name(), index.fields(), index.unique(), index.sparse());
-	}
-
-	public static BasicDBObject parseFields(String[] fields) {
-		BasicDBObject keys = new BasicDBObject();
+	public Projection add(String... fields) {
 		for (String field: fields)
 			if (field.charAt(0) == '-')
-				keys.put(field.substring(1), -1);
+				proj.put(field.substring(1), -1);
 			else if (field.charAt(0) == '+')
-				keys.put(field.substring(1), +1);
+				proj.put(field.substring(1), +1);
 			else
-				keys.put(field, +1);
-		return keys;
+				proj.put(field, +1);
+		return this;
 	}
+
+	public DBObject toDBObject() {
+		return proj;
+	}
+
+	@Override
+	public String toString() {
+		return proj.toString();
+	}
+
 }

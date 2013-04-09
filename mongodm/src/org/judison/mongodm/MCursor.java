@@ -30,6 +30,7 @@ package org.judison.mongodm;
 import java.io.Closeable;
 import java.util.Iterator;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 
@@ -89,6 +90,42 @@ public class MCursor<T> implements Iterable<T>, Iterator<T>, Closeable {
 	private MCursor<T> copy() {
 		MCursor<T> copy = new MCursor<T>(coll, cls, dbCursor.copy(), dbObj);
 		return copy;
+	}
+
+	public MCursor<T> sort(String... fields) {
+		BasicDBObject orderBy = IndexInfo.parseFields(fields);
+		dbCursor.sort(orderBy);
+		return this;
+	}
+
+	public MCursor<T> limit(int n) {
+		dbCursor.limit(n);
+		return this;
+	}
+
+	public MCursor<T> skip(int n) {
+		dbCursor.skip(n);
+		return this;
+	}
+
+	public MCursor<T> skipAndLimit(int skip, int limit) {
+		dbCursor.skip(skip);
+		dbCursor.limit(limit);
+		return this;
+	}
+
+	/**
+	 * @return The number of objects matching the query <b>NOT TAKING</b> limit/skip into consideration
+	 */
+	public int count() {
+		return dbCursor.count();
+	}
+
+	/**
+	 * @return The number of objects matching the query <b>taking</b> limit/skip into consideration
+	 */
+	public int size() {
+		return dbCursor.size();
 	}
 
 	@Override
