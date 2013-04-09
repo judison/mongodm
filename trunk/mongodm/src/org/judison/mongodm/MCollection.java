@@ -143,6 +143,15 @@ public class MCollection<T> {
 		}
 	}
 
+	public MCursor<DBObject> find(Query query, Projection projection) throws MException {
+		try {
+			DBCursor cursor = coll.find(query.toDBObject(), projection.toDBObject());
+			return new MCursor<DBObject>(this, DBObject.class, cursor, true);
+		} catch (MongoException e) {
+			throw new MException(e);
+		}
+	}
+
 	private void checkResult(WriteResult res) throws MException {
 		String error = res.getError();
 		if (error != null)
