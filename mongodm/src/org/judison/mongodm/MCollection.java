@@ -27,7 +27,10 @@
  */
 package org.judison.mongodm;
 
+import java.util.List;
+
 import com.mongodb.BasicDBObject;
+import com.mongodb.CommandResult;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
@@ -147,6 +150,23 @@ public class MCollection<T> {
 		try {
 			DBCursor cursor = coll.find(query.toDBObject(), projection.toDBObject());
 			return new MCursor<DBObject>(this, DBObject.class, cursor, true);
+		} catch (MongoException e) {
+			throw new MException(e);
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	public List<DBObject> aggregate(Pipeline pipeline) throws MException {
+		try {
+			DBObject cmd = new BasicDBObject("aggregate", coll.getName());
+			cmd.put("pipeline", pipeline.getOperators());
+			CommandResult res = mdb.getMongoDB().command(cmd);
+			MongoException e = res.getException();
+			if (e != null)
+				throw new MException(e);
+
+			Object result = res.get("result");
+			return (List<DBObject>)result;
 		} catch (MongoException e) {
 			throw new MException(e);
 		}
