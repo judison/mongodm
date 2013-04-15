@@ -40,6 +40,11 @@ public class Projection {
 		add(fields);
 	}
 
+	public Projection put(String name, Object value) {
+		proj.put(name, value);
+		return this;
+	}
+	
 	public Projection add(String... fields) {
 		for (String field: fields)
 			if (field.charAt(0) == '-')
