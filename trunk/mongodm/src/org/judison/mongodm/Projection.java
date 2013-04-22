@@ -40,11 +40,14 @@ public class Projection {
 		add(fields);
 	}
 
+	/**
+	 * Allows you to map an field or use expressions, works in aggregate pipeline only
+	 */
 	public Projection put(String name, Object value) {
 		proj.put(name, value);
 		return this;
 	}
-	
+
 	public Projection add(String... fields) {
 		for (String field: fields)
 			if (field.charAt(0) == '-')
