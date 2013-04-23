@@ -191,7 +191,7 @@ public class MCollection<T> {
 				if (data == null)
 					data = new BasicDBObject();
 
-				mapper.save(object, data);
+				mapper.saveEntity(object, data);
 
 				WriteResult res = coll.save(data);
 
@@ -209,11 +209,11 @@ public class MCollection<T> {
 	public int update(Query query, Update update) throws MException {
 		return update(query.toDBObject(), update.toDBObject(), false, false);
 	}
-	
+
 	public int update(Query query, Update update, boolean upsert, boolean multi) throws MException {
 		return update(query.toDBObject(), update.toDBObject(), upsert, multi);
 	}
-	
+
 	public int update(DBObject query, DBObject update) throws MException {
 		return update(query, update, false, false);
 	}
@@ -226,7 +226,7 @@ public class MCollection<T> {
 
 	public void remove(T object) throws MException {
 		DBObject data = new BasicDBObject();
-		mapper.save(object, data);
+		mapper.saveEntity(object, data);
 		WriteResult res = coll.remove(new BasicDBObject("_id", data.get("_id")));
 		checkResult(res);
 	}
