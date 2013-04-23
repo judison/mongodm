@@ -149,10 +149,18 @@ public class Mapper {
 	}
 
 	public void save(Object object, DBObject data) {
-		saveEntity(object, data);
+		Class<?> cls = object.getClass();
+		TypeInfo typeInfo = getTypeInfo(cls);
+
+		if (typeInfo.isEntity)
+			saveEntity(object, data);
+		else if (typeInfo.isEmbedded)
+			saveEmbedded(object, data);
+		else
+			throw new IllegalArgumentException("Class " + cls.getName() + " is not an @Entity or @Embedded");
 	}
 
-	private void saveEntity(Object object, DBObject data) {
+	void saveEntity(Object object, DBObject data) {
 		Class<?> cls = object.getClass();
 		TypeInfo typeInfo = getTypeInfo(cls);
 
@@ -165,7 +173,7 @@ public class Mapper {
 
 	}
 
-	private void saveEmbedded(Object object, DBObject data) {
+	void saveEmbedded(Object object, DBObject data) {
 		Class<?> cls = object.getClass();
 		TypeInfo typeInfo = getTypeInfo(cls);
 
