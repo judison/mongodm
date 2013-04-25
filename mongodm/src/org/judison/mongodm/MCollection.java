@@ -29,7 +29,6 @@ package org.judison.mongodm;
 
 import java.util.List;
 
-import com.mongodb.BasicDBObject;
 import com.mongodb.CommandResult;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
@@ -51,7 +50,7 @@ public class MCollection<T> {
 	public MCollection(MDB mdb, Class<T> cls, String entityName) throws MException {
 		this.mdb = mdb;
 		this.cls = cls;
-		if (cls == DBObject.class)
+		if (cls == MObject.class)
 			this.typeInfo = null;
 		else
 			try {
@@ -62,6 +61,7 @@ public class MCollection<T> {
 		if (entityName == null)
 			entityName = typeInfo.entityName;
 		this.coll = mdb.getMongoDB().getCollection(entityName);
+		this.coll.setDBDecoderFactory(MDecoder.FACTORY);
 
 		if (typeInfo != null)
 			for (IndexInfo idx: typeInfo.indexes)
@@ -74,7 +74,7 @@ public class MCollection<T> {
 
 	public T load(Object id) throws MException {
 		try {
-			DBObject data = coll.findOne(id);
+			MObject data = (MObject)coll.findOne(id);
 			return mapLoad(data);
 		} catch (MongoException e) {
 			throw new MException(e);
@@ -83,7 +83,7 @@ public class MCollection<T> {
 
 	public T findOne() throws MException {
 		try {
-			DBObject data = coll.findOne();
+			MObject data = (MObject)coll.findOne();
 			return mapLoad(data);
 		} catch (MongoException e) {
 			throw new MException(e);
@@ -92,7 +92,7 @@ public class MCollection<T> {
 
 	public T findOne(DBObject query) throws MException {
 		try {
-			DBObject data = coll.findOne(query);
+			MObject data = (MObject)coll.findOne(query);
 			return mapLoad(data);
 		} catch (MongoException e) {
 			throw new MException(e);
@@ -101,7 +101,7 @@ public class MCollection<T> {
 
 	public T findOne(Query query) throws MException {
 		try {
-			DBObject data = coll.findOne(query.toDBObject());
+			MObject data = (MObject)coll.findOne(query.toMObject());
 			return mapLoad(data);
 		} catch (MongoException e) {
 			throw new MException(e);
@@ -117,7 +117,7 @@ public class MCollection<T> {
 		}
 	}
 
-	public MCursor<T> find(DBObject query) throws MException {
+	public MCursor<T> find(MObject query) throws MException {
 		try {
 			DBCursor cursor = coll.find(query);
 			return new MCursor<T>(this, cls, cursor, false);
@@ -128,35 +128,35 @@ public class MCollection<T> {
 
 	public MCursor<T> find(Query query) throws MException {
 		try {
-			DBCursor cursor = coll.find(query.toDBObject());
+			DBCursor cursor = coll.find(query.toMObject());
 			return new MCursor<T>(this, cls, cursor, false);
 		} catch (MongoException e) {
 			throw new MException(e);
 		}
 	}
 
-	public MCursor<DBObject> find(DBObject query, DBObject projection) throws MException {
+	public MCursor<MObject> find(MObject query, MObject projection) throws MException {
 		try {
 			DBCursor cursor = coll.find(query, projection);
-			return new MCursor<DBObject>(this, DBObject.class, cursor, true);
+			return new MCursor<MObject>(this, MObject.class, cursor, true);
 		} catch (MongoException e) {
 			throw new MException(e);
 		}
 	}
 
-	public MCursor<DBObject> find(Query query, Projection projection) throws MException {
+	public MCursor<MObject> find(Query query, Projection projection) throws MException {
 		try {
-			DBCursor cursor = coll.find(query.toDBObject(), projection.toDBObject());
-			return new MCursor<DBObject>(this, DBObject.class, cursor, true);
+			DBCursor cursor = coll.find(query.toMObject(), projection.toMObject());
+			return new MCursor<MObject>(this, MObject.class, cursor, true);
 		} catch (MongoException e) {
 			throw new MException(e);
 		}
 	}
 
 	@SuppressWarnings("unchecked")
-	public List<DBObject> aggregate(Pipeline pipeline) throws MException {
+	public List<MObject> aggregate(Pipeline pipeline) throws MException {
 		try {
-			DBObject cmd = new BasicDBObject("aggregate", coll.getName());
+			MObject cmd = new MObject("aggregate", coll.getName());
 			cmd.put("pipeline", pipeline.getOperators());
 			CommandResult res = mdb.getMongoDB().command(cmd);
 			MongoException e = res.getException();
@@ -164,7 +164,7 @@ public class MCollection<T> {
 				throw new MException(e);
 
 			Object result = res.get("result");
-			return (List<DBObject>)result;
+			return (List<MObject>)result;
 		} catch (MongoException e) {
 			throw new MException(e);
 		}
@@ -178,16 +178,16 @@ public class MCollection<T> {
 
 	public void save(T object) throws MException {
 		try {
-			if (cls == DBObject.class) {
-				DBObject data = (DBObject)object;
+			if (cls == MObject.class) {
+				MObject data = (MObject)object;
 				WriteResult res = coll.save(data);
 				String error = res.getError();
 				if (error != null)
 					throw new MException(error);
 			} else {
-				DBObject data = mdb.getLoadedData(object);
+				MObject data = mdb.getLoadedData(object);
 				if (data == null)
-					data = new BasicDBObject();
+					data = new MObject();
 
 				Mapper.saveEntity(object, data);
 
@@ -205,32 +205,32 @@ public class MCollection<T> {
 	}
 
 	public int update(Query query, Update update) throws MException {
-		return update(query.toDBObject(), update.toDBObject(), false, false);
+		return update(query.toMObject(), update.toMObject(), false, false);
 	}
 
 	public int update(Query query, Update update, boolean upsert, boolean multi) throws MException {
-		return update(query.toDBObject(), update.toDBObject(), upsert, multi);
+		return update(query.toMObject(), update.toMObject(), upsert, multi);
 	}
 
-	public int update(DBObject query, DBObject update) throws MException {
+	public int update(MObject query, MObject update) throws MException {
 		return update(query, update, false, false);
 	}
 
-	public int update(DBObject query, DBObject update, boolean upsert, boolean multi) throws MException {
+	public int update(MObject query, MObject update, boolean upsert, boolean multi) throws MException {
 		WriteResult res = coll.update(query, update, upsert, multi);
 		checkResult(res);
 		return res.getN();
 	}
 
 	public void remove(T object) throws MException {
-		DBObject data = new BasicDBObject();
+		MObject data = new MObject();
 		Mapper.saveEntity(object, data);
-		WriteResult res = coll.remove(new BasicDBObject("_id", data.get("_id")));
+		WriteResult res = coll.remove(new MObject("_id", data.get("_id")));
 		checkResult(res);
 	}
 
 	public void removeById(Object id) throws MException {
-		WriteResult res = coll.remove(new BasicDBObject("_id", id));
+		WriteResult res = coll.remove(new MObject("_id", id));
 		checkResult(res);
 	}
 
@@ -239,12 +239,12 @@ public class MCollection<T> {
 	}
 
 	public long count(Query query) {
-		return coll.count(query.toDBObject());
+		return coll.count(query.toMObject());
 	}
 
 	@SuppressWarnings("unchecked")
-	T mapLoad(DBObject data) {
-		if (cls == DBObject.class)
+	T mapLoad(MObject data) {
+		if (cls == MObject.class)
 			return (T)data;
 		if (data == null)
 			return null;

@@ -27,8 +27,6 @@
  */
 package org.judison.mongodm;
 
-import com.mongodb.BasicDBObject;
-import com.mongodb.DBObject;
 
 /**
  * Represents an $group aggregate operator.<br>
@@ -38,7 +36,7 @@ import com.mongodb.DBObject;
  */
 public class Group {
 
-	private BasicDBObject group = new BasicDBObject();
+	private MObject group = new MObject();
 
 	/**
 	 * Constructs an {@link Group} with { "_id": {<b>name</b>: <b>value</b>} }
@@ -60,12 +58,12 @@ public class Group {
 	}
 
 	public Group compositeId(String name, Object value) {
-		DBObject id = null;
+		MObject id = null;
 		Object _id = group.get("_id");
-		if (_id instanceof DBObject)
-			id = (DBObject)_id;
+		if (_id instanceof MObject)
+			id = (MObject)_id;
 		else
-			id = new BasicDBObject();
+			id = new MObject();
 
 		id.put(name, value);
 
@@ -73,42 +71,42 @@ public class Group {
 	}
 
 	public Group count(String name) {
-		return put(name, new BasicDBObject("$sum", 1));
+		return put(name, new MObject("$sum", 1));
 	}
 
 	public Group sum(String name, Object value) {
-		return put(name, new BasicDBObject("$sum", value));
+		return put(name, new MObject("$sum", value));
 	}
 
 	public Group push(String name, Object value) {
-		return put(name, new BasicDBObject("$push", value));
+		return put(name, new MObject("$push", value));
 	}
 
 	public Group avg(String name, Object value) {
-		return put(name, new BasicDBObject("$avg", value));
+		return put(name, new MObject("$avg", value));
 	}
 
 	public Group min(String name, Object value) {
-		return put(name, new BasicDBObject("$min", value));
+		return put(name, new MObject("$min", value));
 	}
 
 	public Group max(String name, Object value) {
-		return put(name, new BasicDBObject("$max", value));
+		return put(name, new MObject("$max", value));
 	}
 
 	public Group last(String name, Object value) {
-		return put(name, new BasicDBObject("$last", value));
+		return put(name, new MObject("$last", value));
 	}
 
 	public Group first(String name, Object value) {
-		return put(name, new BasicDBObject("$first", value));
+		return put(name, new MObject("$first", value));
 	}
 
 	public Group addToSet(String name, Object value) {
-		return put(name, new BasicDBObject("$addToSet", value));
+		return put(name, new MObject("$addToSet", value));
 	}
 
-	public DBObject toDBObject() {
+	public MObject toMObject() {
 		return group;
 	}
 

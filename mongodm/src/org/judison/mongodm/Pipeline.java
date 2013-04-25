@@ -30,44 +30,41 @@ package org.judison.mongodm;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.mongodb.BasicDBObject;
-import com.mongodb.DBObject;
-
 public class Pipeline {
 
-	ArrayList<DBObject> operators = new ArrayList<DBObject>();
+	ArrayList<MObject> operators = new ArrayList<MObject>();
 
 	public Pipeline() {}
 
 	public Pipeline project(String... fields) {
-		operators.add(new BasicDBObject("$project", IndexInfo.parseFields(fields)));
+		operators.add(new MObject("$project", IndexInfo.parseFields(fields)));
 		return this;
 	}
 
 	public Pipeline project(Projection projection) {
-		operators.add(new BasicDBObject("$project", projection.toDBObject()));
+		operators.add(new MObject("$project", projection.toMObject()));
 		return this;
 	}
 
-	public Pipeline project(DBObject projection) {
-		operators.add(new BasicDBObject("$project", projection));
+	public Pipeline project(MObject projection) {
+		operators.add(new MObject("$project", projection));
 		return this;
 	}
 
 	public Pipeline match(Query query) {
-		operators.add(new BasicDBObject("$match", query.toDBObject()));
+		operators.add(new MObject("$match", query.toMObject()));
 		return this;
 	}
 
-	public Pipeline match(DBObject query) {
-		operators.add(new BasicDBObject("$match", query));
+	public Pipeline match(MObject query) {
+		operators.add(new MObject("$match", query));
 		return this;
 	}
 
 	public Pipeline limit(int limit) {
 		if (limit <= 0)
 			throw new IllegalArgumentException();
-		operators.add(new BasicDBObject("$limit", limit));
+		operators.add(new MObject("$limit", limit));
 		return this;
 	}
 
@@ -76,7 +73,7 @@ public class Pipeline {
 			throw new IllegalArgumentException();
 		if (skip == 0)
 			return this;
-		operators.add(new BasicDBObject("$skip", skip));
+		operators.add(new MObject("$skip", skip));
 		return this;
 	}
 
@@ -85,33 +82,33 @@ public class Pipeline {
 			throw new IllegalArgumentException();
 		if (!unwind.startsWith("$"))
 			unwind = '$' + unwind;
-		operators.add(new BasicDBObject("$unwind", unwind));
+		operators.add(new MObject("$unwind", unwind));
 		return this;
 	}
 
 	public Pipeline group(Group group) {
-		operators.add(new BasicDBObject("$group", group.toDBObject()));
+		operators.add(new MObject("$group", group.toMObject()));
 		return this;
 	}
 
-	public Pipeline group(DBObject group) {
-		operators.add(new BasicDBObject("$group", group));
+	public Pipeline group(MObject group) {
+		operators.add(new MObject("$group", group));
 		return this;
 	}
 
 	public Pipeline sort(String... fields) {
 		if (fields == null || fields.length == 0)
 			throw new IllegalArgumentException();
-		operators.add(new BasicDBObject("$sort", IndexInfo.parseFields(fields)));
+		operators.add(new MObject("$sort", IndexInfo.parseFields(fields)));
 		return this;
 	}
 
-	public Pipeline sort(DBObject sort) {
-		operators.add(new BasicDBObject("$sort", sort));
+	public Pipeline sort(MObject sort) {
+		operators.add(new MObject("$sort", sort));
 		return this;
 	}
 
-	public List<DBObject> getOperators() {
+	public List<MObject> getOperators() {
 		return operators;
 	}
 

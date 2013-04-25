@@ -30,9 +30,7 @@ package org.judison.mongodm;
 import java.io.Closeable;
 import java.util.Iterator;
 
-import com.mongodb.BasicDBObject;
 import com.mongodb.DBCursor;
-import com.mongodb.DBObject;
 
 public class MCursor<T> implements Iterable<T>, Iterator<T>, Closeable {
 
@@ -70,7 +68,7 @@ public class MCursor<T> implements Iterable<T>, Iterator<T>, Closeable {
 	@Override
 	@SuppressWarnings("unchecked")
 	public T next() {
-		DBObject data = dbCursor.next();
+		MObject data = (MObject)dbCursor.next();
 		if (dbObj)
 			last = (T)data;
 		else
@@ -93,7 +91,7 @@ public class MCursor<T> implements Iterable<T>, Iterator<T>, Closeable {
 	}
 
 	public MCursor<T> sort(String... fields) {
-		BasicDBObject orderBy = IndexInfo.parseFields(fields);
+		MObject orderBy = IndexInfo.parseFields(fields);
 		dbCursor.sort(orderBy);
 		return this;
 	}

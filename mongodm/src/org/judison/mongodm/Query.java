@@ -30,9 +30,6 @@ package org.judison.mongodm;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.mongodb.BasicDBObject;
-import com.mongodb.DBObject;
-
 public class Query {
 
 	public enum Operator {
@@ -79,7 +76,7 @@ public class Query {
 		}
 	}
 
-	private BasicDBObject conds = new BasicDBObject();
+	private MObject conds = new MObject();
 
 	public Query() {}
 
@@ -184,7 +181,7 @@ public class Query {
 		return filter(prop, Operator.EXISTS, Boolean.FALSE);
 	}
 
-	public DBObject toDBObject() {
+	public MObject toMObject() {
 		return conds;
 	}
 

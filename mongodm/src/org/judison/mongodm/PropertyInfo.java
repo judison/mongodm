@@ -38,8 +38,6 @@ import org.judison.mongodm.annotations.Embedded;
 import org.judison.mongodm.annotations.Entity;
 import org.judison.mongodm.annotations.Property;
 
-import com.mongodb.DBObject;
-
 final class PropertyInfo {
 
 	public static enum Type {
@@ -116,8 +114,8 @@ final class PropertyInfo {
 	}
 
 	private static boolean isClassConcrete(Class<?> cls) {
-		// Permite DBObject
-		return cls.isPrimitive() || cls == DBObject.class || (!cls.isInterface() && (cls.isArray() || !Modifier.isAbstract(cls.getModifiers())));
+		// Permite MObject
+		return cls.isPrimitive() || cls == MObject.class || (!cls.isInterface() && (cls.isArray() || !Modifier.isAbstract(cls.getModifiers())));
 	}
 
 	private static boolean isListOrArrayClass(Class<?> cls) {
