@@ -226,7 +226,7 @@ public final class Mapper {
 
 	}
 
-	static void setField(PropertyInfo fi, Object object, Object value) {
+	private static void setField(PropertyInfo fi, Object object, Object value) {
 		try {
 			Field f = fi.field;
 
