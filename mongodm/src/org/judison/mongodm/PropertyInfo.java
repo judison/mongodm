@@ -49,7 +49,6 @@ final class PropertyInfo {
 		SIMPLE
 	}
 
-	final Mapper mapper;
 	public final Type type;
 	public final Class<?> cls;
 	public final Class<?> itemCls;
@@ -57,8 +56,7 @@ final class PropertyInfo {
 	public final String name;
 	final TypeInfo subType;
 
-	PropertyInfo(Mapper mapper, Field field, String name, Property prop) {
-		this.mapper = mapper;
+	PropertyInfo(Field field, String name, Property prop) {
 		this.field = field;
 		this.name = name;
 
@@ -108,7 +106,7 @@ final class PropertyInfo {
 		}
 
 		if (type == Type.SUB)
-			subType = mapper.getTypeInfo(cls); //Gera problema ciclico
+			subType = Mapper.getTypeInfo(cls); //Gera problema ciclico
 		else
 			subType = null;
 

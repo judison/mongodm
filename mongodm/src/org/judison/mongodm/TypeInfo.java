@@ -40,14 +40,13 @@ import org.judison.mongodm.annotations.Entity;
 import org.judison.mongodm.annotations.Id;
 import org.judison.mongodm.annotations.Index;
 import org.judison.mongodm.annotations.Indexed;
+import org.judison.mongodm.annotations.Indexed.Order;
 import org.judison.mongodm.annotations.Indexes;
 import org.judison.mongodm.annotations.Property;
 import org.judison.mongodm.annotations.Transient;
-import org.judison.mongodm.annotations.Indexed.Order;
 
 final class TypeInfo {
 
-	final Mapper mapper;
 	final String entityName;
 	final Constructor<?> constructor;
 	final PropertyInfo[] properties;
@@ -56,8 +55,7 @@ final class TypeInfo {
 	final boolean isEmbedded;
 	final IndexInfo[] indexes;
 
-	public TypeInfo(Mapper mapper, Class<?> cls) {
-		this.mapper = mapper;
+	public TypeInfo(Class<?> cls) {
 		try {
 			Entity entity = cls.getAnnotation(Entity.class);
 			if (entity != null) {
@@ -131,7 +129,7 @@ final class TypeInfo {
 					if (fields.containsKey(name))
 						throw new IllegalStateException("Duplicated field '" + name + "' at " + f.getDeclaringClass().getName() + "." + f.getName());
 
-					PropertyInfo info = new PropertyInfo(mapper, f, name, prop);
+					PropertyInfo info = new PropertyInfo(f, name, prop);
 					fields.put(name, info);
 
 					if (name.equals("_id"))

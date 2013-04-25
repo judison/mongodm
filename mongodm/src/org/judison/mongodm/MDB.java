@@ -68,28 +68,18 @@ public class MDB {
 			"ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE";
 
 	private final DB database;
-	private final Mapper mapper;
 	private Map<Object, MCollection<?>> collections = new HashMap<Object, MCollection<?>>();
 
 	public MDB(String url) throws UnknownHostException {
-		this(Mongo.connect(new DBAddress(url)), new Mapper());
+		this(Mongo.connect(new DBAddress(url)));
 	}
 
 	public MDB(DBAddress url) {
-		this(Mongo.connect(url), new Mapper());
+		this(Mongo.connect(url));
 	}
 
 	public MDB(DB database) {
-		this(database, new Mapper());
-	}
-
-	public MDB(DB database, Mapper mapper) {
 		this.database = database;
-		this.mapper = mapper;
-	}
-
-	public Mapper getMapper() {
-		return mapper;
 	}
 
 	public <T> void putCollection(Class<T> cls, MCollection<T> coll) throws MException {
