@@ -53,7 +53,9 @@ import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
 
-public class Mapper {
+public final class Mapper {
+
+	private Mapper() {}
 
 	private static Map<Class<?>, TypeConverter> typeConverters = new HashMap<Class<?>, TypeConverter>();
 
@@ -92,17 +94,17 @@ public class Mapper {
 		registerTypeConverter(BasicBSONList.class, dbObjectConverter);
 	}
 
-	private Map<Class<?>, TypeInfo> typeInfos = new HashMap<Class<?>, TypeInfo>();
+	private static Map<Class<?>, TypeInfo> typeInfos = new HashMap<Class<?>, TypeInfo>();
 
-	TypeInfo getTypeInfo(Class<?> cls) {
+	static TypeInfo getTypeInfo(Class<?> cls) {
 		return getTypeInfo(cls, true);
 	}
 
-	TypeInfo getTypeInfo(Class<?> cls, boolean canThrow) {
+	static TypeInfo getTypeInfo(Class<?> cls, boolean canThrow) {
 		try {
 			TypeInfo info = typeInfos.get(cls);
 			if (info == null) {
-				info = new TypeInfo(this, cls);
+				info = new TypeInfo(cls);
 				typeInfos.put(cls, info);
 			}
 			return info;
@@ -114,41 +116,41 @@ public class Mapper {
 		}
 	}
 
-	public void addClass(Class<?> cls) {
+	public static void addClass(Class<?> cls) {
 		TypeInfo info = typeInfos.get(cls);
 		if (info == null) {
-			info = new TypeInfo(this, cls);
+			info = new TypeInfo(cls);
 			typeInfos.put(cls, info);
 		}
 	}
 
-	public void load(Object object, DBObject data) {
+	public static void load(Object object, DBObject data) {
 		loadEntity(object, data);
 	}
 
-	private void loadEntity(Object object, DBObject data) {
+	private static void loadEntity(Object object, DBObject data) {
 		Class<?> cls = object.getClass();
 		TypeInfo typeInfo = getTypeInfo(cls);
 		if (!typeInfo.isEntity)
 			throw new IllegalArgumentException("Class " + cls.getName() + " is not an @Entity");
 
 		for (PropertyInfo fi: typeInfo.properties) {
-			setField(fi, object, data);
+			setField(fi, object, data.get(fi.name));
 		}
 	}
 
-	private void loadEmbedded(Object object, DBObject data) {
+	private static void loadEmbedded(Object object, DBObject data) {
 		Class<?> cls = object.getClass();
 		TypeInfo typeInfo = getTypeInfo(cls);
 		if (!typeInfo.isEmbedded)
 			throw new IllegalArgumentException("Class " + cls.getName() + " can't be @Embedded");
 
 		for (PropertyInfo fi: typeInfo.properties) {
-			setField(fi, object, data);
+			setField(fi, object, data.get(fi.name));
 		}
 	}
 
-	public void save(Object object, DBObject data) {
+	public static void save(Object object, DBObject data) {
 		Class<?> cls = object.getClass();
 		TypeInfo typeInfo = getTypeInfo(cls);
 
@@ -160,7 +162,7 @@ public class Mapper {
 			throw new IllegalArgumentException("Class " + cls.getName() + " is not an @Entity or @Embedded");
 	}
 
-	void saveEntity(Object object, DBObject data) {
+	static void saveEntity(Object object, DBObject data) {
 		Class<?> cls = object.getClass();
 		TypeInfo typeInfo = getTypeInfo(cls);
 
@@ -173,7 +175,7 @@ public class Mapper {
 
 	}
 
-	void saveEmbedded(Object object, DBObject data) {
+	static void saveEmbedded(Object object, DBObject data) {
 		Class<?> cls = object.getClass();
 		TypeInfo typeInfo = getTypeInfo(cls);
 
@@ -187,7 +189,7 @@ public class Mapper {
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	Object bsonToJava(Class<?> fieldClass, Object value, Object previous) throws IllegalAccessException {
+	static Object bsonToJava(Class<?> fieldClass, Object value, Object previous) throws IllegalAccessException {
 		if (fieldClass == String.class)
 			return value.toString();
 
@@ -224,14 +226,9 @@ public class Mapper {
 
 	}
 
-	private void setField(PropertyInfo fi, Object object, DBObject data) {
+	static void setField(PropertyInfo fi, Object object, Object value) {
 		try {
 			Field f = fi.field;
-			String name = fi.name;
-
-			//System.out.println("setField " + f.getType().getSimpleName() + " " + f.getDeclaringClass().getSimpleName() + "." + f.getName());
-
-			Object value = data.get(name);
 
 			if (value != null) {
 				Class<?> fieldClass = f.getType();
@@ -265,7 +262,7 @@ public class Mapper {
 		}
 	}
 
-	private void setNull(Field f, Object object) throws IllegalArgumentException, IllegalAccessException {
+	private static void setNull(Field f, Object object) throws IllegalArgumentException, IllegalAccessException {
 		Class<?> fieldClass = f.getType();
 		if (fieldClass == Integer.TYPE)
 			f.setInt(object, 0);
@@ -287,7 +284,7 @@ public class Mapper {
 			f.set(object, null);
 	}
 
-	Object javaToBson(Class<?> fieldClass, Object value, Object previous) {
+	static Object javaToBson(Class<?> fieldClass, Object value, Object previous) {
 
 		if (fieldClass == Integer.TYPE)
 			return NumberConverter.INSTANCE.javaToBson(Integer.class, value);
@@ -333,7 +330,7 @@ public class Mapper {
 		throw new IllegalArgumentException("Cant convert " + value.getClass() + " to BSON");
 	}
 
-	private void getField(PropertyInfo prop, Object object, DBObject data) {
+	private static void getField(PropertyInfo prop, Object object, DBObject data) {
 		try {
 			Field f = prop.field;
 			String name = prop.name;
@@ -358,7 +355,7 @@ public class Mapper {
 		}
 	}
 
-	private Object arrayBsonToJava(Class<?> cls, Class<?> itemCls, Object value) throws IllegalAccessException {
+	private static Object arrayBsonToJava(Class<?> cls, Class<?> itemCls, Object value) throws IllegalAccessException {
 		if (!(value instanceof BasicBSONList))
 			throw new IllegalArgumentException();
 
@@ -428,7 +425,7 @@ public class Mapper {
 		return list;
 	}
 
-	private Object arrayJavaToBson(Class<?> cls, Class<?> itemCls, Object value) {
+	private static Object arrayJavaToBson(Class<?> cls, Class<?> itemCls, Object value) {
 		if (value.getClass().isArray()) {
 			BasicBSONList blist = new BasicBSONList();
 

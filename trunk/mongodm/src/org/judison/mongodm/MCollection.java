@@ -40,7 +40,6 @@ import com.mongodb.WriteResult;
 public class MCollection<T> {
 
 	final MDB mdb;
-	private final Mapper mapper;
 	private final DBCollection coll;
 	private final TypeInfo typeInfo;
 	final Class<T> cls;
@@ -51,13 +50,12 @@ public class MCollection<T> {
 
 	public MCollection(MDB mdb, Class<T> cls, String entityName) throws MException {
 		this.mdb = mdb;
-		this.mapper = mdb.getMapper();
 		this.cls = cls;
 		if (cls == DBObject.class)
 			this.typeInfo = null;
 		else
 			try {
-				this.typeInfo = mapper.getTypeInfo(cls);
+				this.typeInfo = Mapper.getTypeInfo(cls);
 			} catch (Throwable e) {
 				throw new MException(e);
 			}
@@ -191,13 +189,13 @@ public class MCollection<T> {
 				if (data == null)
 					data = new BasicDBObject();
 
-				mapper.saveEntity(object, data);
+				Mapper.saveEntity(object, data);
 
 				WriteResult res = coll.save(data);
 
 				checkResult(res);
 
-				mapper.load(object, data);
+				Mapper.load(object, data);
 
 				mdb.putLoadedData(object, data);
 			}
@@ -226,7 +224,7 @@ public class MCollection<T> {
 
 	public void remove(T object) throws MException {
 		DBObject data = new BasicDBObject();
-		mapper.saveEntity(object, data);
+		Mapper.saveEntity(object, data);
 		WriteResult res = coll.remove(new BasicDBObject("_id", data.get("_id")));
 		checkResult(res);
 	}
@@ -253,7 +251,7 @@ public class MCollection<T> {
 		else
 			try {
 				T object = (T)typeInfo.constructor.newInstance();
-				mapper.load(object, data);
+				Mapper.load(object, data);
 				mdb.putLoadedData(object, data);
 				return object;
 			} catch (Throwable e) {
