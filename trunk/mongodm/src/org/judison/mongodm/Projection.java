@@ -27,12 +27,10 @@
  */
 package org.judison.mongodm;
 
-import com.mongodb.BasicDBObject;
-import com.mongodb.DBObject;
 
 public class Projection {
 
-	private BasicDBObject proj = new BasicDBObject();
+	private MObject proj = new MObject();
 
 	public Projection() {}
 
@@ -59,7 +57,7 @@ public class Projection {
 		return this;
 	}
 
-	public DBObject toDBObject() {
+	public MObject toMObject() {
 		return proj;
 	}
 

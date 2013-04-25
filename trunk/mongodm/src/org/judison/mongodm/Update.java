@@ -28,12 +28,10 @@
 package org.judison.mongodm;
 
 import com.mongodb.BasicDBList;
-import com.mongodb.BasicDBObject;
-import com.mongodb.DBObject;
 
 public class Update {
 
-	private BasicDBObject update = new BasicDBObject();
+	private MObject update = new MObject();
 
 	public Update() {}
 
@@ -41,28 +39,28 @@ public class Update {
 		update.put(name, value);
 		return this;
 	}
-	
+
 	private void putIn(String operator, String field, Object value) {
-		DBObject sub = (DBObject)update.get(operator);
+		MObject sub = (MObject)update.get(operator);
 		if (sub == null) {
-			sub = new BasicDBObject();
+			sub = new MObject();
 			update.put(operator, sub);
 		}
 		sub.put(field, value);
 	}
-	
+
 	private Object getIn(String operator, String field) {
-		DBObject sub = (DBObject)update.get(operator);
+		MObject sub = (MObject)update.get(operator);
 		if (sub == null)
 			return null;
 		return sub.get(field);
 	}
-	
+
 	public Update set(String field, Object value) {
 		putIn("$set", field, value);
 		return this;
 	}
-	
+
 	/**
 	 * The $setOnInsert operator assigns values to fields during an upsert only when using the upsert option to the update() operation performs an insert.
 	 */
@@ -76,35 +74,35 @@ public class Update {
 			putIn("$unset", field, 1);
 		return this;
 	}
-	
+
 	public Update push(String array, Object... values) {
 		for (Object value: values)
 			_each("$push", array, value);
 		return this;
 	}
-	
+
 	public Update pull(String array, Object... values) {
 		for (Object value: values)
 			_each("$pull", array, value);
 		return this;
 	}
-	
+
 	public Update addToSet(String array, Object... values) {
 		for (Object value: values)
 			_each("$addToSet", array, value);
 		return this;
 	}
-	
+
 	private void _each(String operator, String array, Object value) {
 		Object obj = getIn(operator, array);
 		if (obj == null)
 			putIn(operator, array, value);
-		else if (obj instanceof DBObject && ((DBObject)obj).containsField("$each")) {
-			DBObject eh = (DBObject)obj;
+		else if (obj instanceof MObject && ((MObject)obj).containsField("$each")) {
+			MObject eh = (MObject)obj;
 			BasicDBList each = (BasicDBList)eh.get("$each");
 			each.add(value);
 		} else {
-			BasicDBObject eh = new BasicDBObject(); 
+			MObject eh = new MObject();
 			BasicDBList each = new BasicDBList();
 			each.add(obj);
 			each.add(value);
@@ -112,23 +110,23 @@ public class Update {
 			putIn(operator, array, eh);
 		}
 	}
-	
+
 	public Update pop(String field) {
 		putIn("$pop", field, 1);
 		return this;
 	}
-	
+
 	public Update popFirst(String field) {
 		putIn("$pop", field, -1);
 		return this;
 	}
-	
+
 	public Update rename(String oldName, String newName) {
 		putIn("$rename", oldName, newName);
 		return this;
 	}
 
-	public DBObject toDBObject() {
+	public MObject toMObject() {
 		return update;
 	}
 

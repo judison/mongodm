@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, Judison Oliveira Gil Filho <judison@gmail.com>
+ * Copyright (c) 2013, Judison Oliveira Gil Filho <judison@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -27,42 +27,45 @@
  */
 package org.judison.mongodm;
 
-import org.judison.mongodm.annotations.Index;
+import java.util.List;
 
+import org.bson.BSONObject;
+
+import com.mongodb.BasicDBList;
+import com.mongodb.DBCallback;
 import com.mongodb.DBCollection;
+import com.mongodb.DBDecoder;
+import com.mongodb.DBDecoderFactory;
+import com.mongodb.DefaultDBCallback;
+import com.mongodb.DefaultDBDecoder;
 
-final class IndexInfo {
+class MDecoder extends DefaultDBDecoder {
 
-	final MObject keys;
-	final MObject options;
+	public static final DBDecoderFactory FACTORY = new DBDecoderFactory() {
 
-	public IndexInfo(String name, String[] fields, boolean unique, boolean sparse) {
-		keys = parseFields(fields);
-		options = new MObject();
-		if (unique)
-			options.put("unique", true);
-		if (sparse)
-			options.put("sparse", true);
+		@Override
+		public DBDecoder create() {
+			return new MDecoder();
+		}
+	};
 
-		if (name == null || name.isEmpty())
-			name = DBCollection.genIndexName(keys);
+	@Override
+	public DBCallback getDBCallback(DBCollection collection) {
+		return new DefaultDBCallback(collection) {
 
-		options.put("name", name);
+			@Override
+			public BSONObject create() {
+				return new MObject();
+			}
+
+			@Override
+			public BSONObject create(boolean array, List<String> path) {
+				if (array)
+					return new BasicDBList();
+				else
+					return new MObject();
+			}
+		};
 	}
 
-	public IndexInfo(Index index) {
-		this(index.name(), index.fields(), index.unique(), index.sparse());
-	}
-
-	public static MObject parseFields(String[] fields) {
-		MObject keys = new MObject();
-		for (String field: fields)
-			if (field.charAt(0) == '-')
-				keys.put(field.substring(1), -1);
-			else if (field.charAt(0) == '+')
-				keys.put(field.substring(1), +1);
-			else
-				keys.put(field, +1);
-		return keys;
-	}
 }

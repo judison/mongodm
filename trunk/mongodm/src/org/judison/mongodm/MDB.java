@@ -36,7 +36,6 @@ import java.util.WeakHashMap;
 
 import com.mongodb.DB;
 import com.mongodb.DBAddress;
-import com.mongodb.DBObject;
 import com.mongodb.Mongo;
 
 public class MDB {
@@ -80,6 +79,7 @@ public class MDB {
 
 	public MDB(DB database) {
 		this.database = database;
+		database.getCollection("$cmd").setDBDecoderFactory(MDecoder.FACTORY);
 	}
 
 	public <T> void putCollection(Class<T> cls, MCollection<T> coll) throws MException {
@@ -104,12 +104,12 @@ public class MDB {
 		}
 	}
 
-	public MCollection<DBObject> getCollection(String name) throws MException {
+	public MCollection<MObject> getCollection(String name) throws MException {
 		synchronized (collections) {
 			@SuppressWarnings("unchecked")
-			MCollection<DBObject> coll = (MCollection<DBObject>)collections.get(name);
+			MCollection<MObject> coll = (MCollection<MObject>)collections.get(name);
 			if (coll == null) {
-				coll = new MCollection<DBObject>(this, DBObject.class, name);
+				coll = new MCollection<MObject>(this, MObject.class, name);
 				collections.put(name, coll);
 			}
 			return coll;
@@ -120,15 +120,15 @@ public class MDB {
 		return database;
 	}
 
-	private WeakHashMap<Object, DBObject> loadedDatas = new WeakHashMap<Object, DBObject>();
+	private WeakHashMap<Object, MObject> loadedDatas = new WeakHashMap<Object, MObject>();
 
-	void putLoadedData(Object key, DBObject value) {
+	void putLoadedData(Object key, MObject value) {
 		synchronized (loadedDatas) {
 			loadedDatas.put(key, value);
 		}
 	}
 
-	DBObject getLoadedData(Object key) {
+	MObject getLoadedData(Object key) {
 		synchronized (loadedDatas) {
 			return loadedDatas.get(key);
 		}

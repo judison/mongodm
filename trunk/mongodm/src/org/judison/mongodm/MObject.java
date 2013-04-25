@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, Judison Oliveira Gil Filho <judison@gmail.com>
+ * Copyright (c) 2013, Judison Oliveira Gil Filho <judison@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -27,42 +27,18 @@
  */
 package org.judison.mongodm;
 
-import org.judison.mongodm.annotations.Index;
+import com.mongodb.BasicDBObject;
 
-import com.mongodb.DBCollection;
+public class MObject extends BasicDBObject {
 
-final class IndexInfo {
+	private static final long serialVersionUID = 1L;
 
-	final MObject keys;
-	final MObject options;
-
-	public IndexInfo(String name, String[] fields, boolean unique, boolean sparse) {
-		keys = parseFields(fields);
-		options = new MObject();
-		if (unique)
-			options.put("unique", true);
-		if (sparse)
-			options.put("sparse", true);
-
-		if (name == null || name.isEmpty())
-			name = DBCollection.genIndexName(keys);
-
-		options.put("name", name);
+	public MObject() {
+		super();
 	}
 
-	public IndexInfo(Index index) {
-		this(index.name(), index.fields(), index.unique(), index.sparse());
+	public MObject(String key, Object value) {
+		super(key, value);
 	}
 
-	public static MObject parseFields(String[] fields) {
-		MObject keys = new MObject();
-		for (String field: fields)
-			if (field.charAt(0) == '-')
-				keys.put(field.substring(1), -1);
-			else if (field.charAt(0) == '+')
-				keys.put(field.substring(1), +1);
-			else
-				keys.put(field, +1);
-		return keys;
-	}
 }

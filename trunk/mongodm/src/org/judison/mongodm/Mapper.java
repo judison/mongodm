@@ -88,6 +88,7 @@ public final class Mapper {
 			registerTypeConverter(cls, PassThruConverter.INSTANCE);
 
 		DBObjectConverter dbObjectConverter = DBObjectConverter.INSTANCE;
+		registerTypeConverter(MObject.class, dbObjectConverter);
 		registerTypeConverter(DBObject.class, dbObjectConverter);
 		registerTypeConverter(BasicDBObject.class, dbObjectConverter);
 		registerTypeConverter(BasicDBList.class, dbObjectConverter);
@@ -124,11 +125,11 @@ public final class Mapper {
 		}
 	}
 
-	public static void load(Object object, DBObject data) {
+	public static void load(Object object, MObject data) {
 		loadEntity(object, data);
 	}
 
-	private static void loadEntity(Object object, DBObject data) {
+	private static void loadEntity(Object object, MObject data) {
 		Class<?> cls = object.getClass();
 		TypeInfo typeInfo = getTypeInfo(cls);
 		if (!typeInfo.isEntity)
@@ -139,7 +140,7 @@ public final class Mapper {
 		}
 	}
 
-	private static void loadEmbedded(Object object, DBObject data) {
+	private static void loadEmbedded(Object object, MObject data) {
 		Class<?> cls = object.getClass();
 		TypeInfo typeInfo = getTypeInfo(cls);
 		if (!typeInfo.isEmbedded)
@@ -150,7 +151,7 @@ public final class Mapper {
 		}
 	}
 
-	public static void save(Object object, DBObject data) {
+	public static void save(Object object, MObject data) {
 		Class<?> cls = object.getClass();
 		TypeInfo typeInfo = getTypeInfo(cls);
 
@@ -162,7 +163,7 @@ public final class Mapper {
 			throw new IllegalArgumentException("Class " + cls.getName() + " is not an @Entity or @Embedded");
 	}
 
-	static void saveEntity(Object object, DBObject data) {
+	static void saveEntity(Object object, MObject data) {
 		Class<?> cls = object.getClass();
 		TypeInfo typeInfo = getTypeInfo(cls);
 
@@ -175,7 +176,7 @@ public final class Mapper {
 
 	}
 
-	static void saveEmbedded(Object object, DBObject data) {
+	static void saveEmbedded(Object object, MObject data) {
 		Class<?> cls = object.getClass();
 		TypeInfo typeInfo = getTypeInfo(cls);
 
@@ -205,8 +206,8 @@ public final class Mapper {
 		// Tem um TypeInfo pra classe esperada?
 		TypeInfo typeInfo = getTypeInfo(fieldClass, false);
 		if (typeInfo != null) {
-			if (value instanceof DBObject) {
-				DBObject subData = (DBObject)value;
+			if (value instanceof MObject) {
+				MObject subData = (MObject)value;
 				Object subObj = previous;
 				if (subObj == null)
 					try {
@@ -314,11 +315,11 @@ public final class Mapper {
 
 		TypeInfo typeInfo = getTypeInfo(fieldClass, false);
 		if (typeInfo != null) {
-			DBObject subData;
-			if (previous instanceof DBObject)
-				subData = (DBObject)previous;
+			MObject subData;
+			if (previous instanceof MObject)
+				subData = (MObject)previous;
 			else
-				subData = new BasicDBObject();
+				subData = new MObject();
 
 			Object subObj = value;
 
@@ -330,7 +331,7 @@ public final class Mapper {
 		throw new IllegalArgumentException("Cant convert " + value.getClass() + " to BSON");
 	}
 
-	private static void getField(PropertyInfo prop, Object object, DBObject data) {
+	private static void getField(PropertyInfo prop, Object object, MObject data) {
 		try {
 			Field f = prop.field;
 			String name = prop.name;
