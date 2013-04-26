@@ -29,7 +29,6 @@ package org.judison.mongodm;
 
 import java.util.List;
 
-import com.mongodb.CommandResult;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
@@ -153,11 +152,15 @@ public class MCollection<T> {
 		}
 	}
 
+	/*
 	@SuppressWarnings("unchecked")
 	public List<MObject> aggregate(Pipeline pipeline) throws MException {
 		try {
 			MObject cmd = new MObject("aggregate", coll.getName());
 			cmd.put("pipeline", pipeline.getOperators());
+			
+			
+			
 			CommandResult res = mdb.getMongoDB().command(cmd);
 			MongoException e = res.getException();
 			if (e != null)
@@ -168,6 +171,14 @@ public class MCollection<T> {
 		} catch (MongoException e) {
 			throw new MException(e);
 		}
+	}
+	*/
+
+	@SuppressWarnings("unchecked")
+	public List<MObject> aggregate(Pipeline pipeline) throws MException {
+		MObject cmd = new MObject("aggregate", coll.getName());
+		cmd.put("pipeline", pipeline.getOperators());
+		return (List<MObject>)mdb.command(cmd);
 	}
 
 	private void checkResult(WriteResult res) throws MException {
