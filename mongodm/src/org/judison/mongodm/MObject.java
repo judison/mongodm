@@ -27,11 +27,36 @@
  */
 package org.judison.mongodm;
 
+import java.util.List;
+
+import org.bson.BSONObject;
+
+import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
+import com.mongodb.util.JSON;
+import com.mongodb.util.JSONCallback;
 
 public class MObject extends BasicDBObject {
 
 	private static final long serialVersionUID = 1L;
+
+	public static MObject parseJSON(String str) {
+		return (MObject)JSON.parse(str, new JSONCallback() {
+
+			@Override
+			public BSONObject create() {
+				return new MObject();
+			}
+
+			@Override
+			public BSONObject create(boolean array, List<String> path) {
+				if (array)
+					return new BasicDBList();
+				else
+					return new MObject();
+			}
+		});
+	}
 
 	public MObject() {
 		super();
