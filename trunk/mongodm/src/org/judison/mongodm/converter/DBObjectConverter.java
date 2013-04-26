@@ -29,6 +29,7 @@ package org.judison.mongodm.converter;
 
 import org.bson.BSONObject;
 import org.bson.types.BasicBSONList;
+import org.judison.mongodm.MObject;
 
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
@@ -42,6 +43,16 @@ public final class DBObjectConverter extends TypeConverter {
 
 	@Override
 	public Object bsonToJava(java.lang.Class<?> cls, Object bsonValue) {
+		if (cls == MObject.class) {
+			if (bsonValue instanceof MObject)
+				return bsonValue;
+			if (bsonValue instanceof BSONObject) {
+				MObject mobj = new MObject();
+				mobj.putAll((BSONObject)bsonValue);
+				return mobj;
+			}
+			throw new IllegalArgumentException();
+		}
 		if (cls == BasicDBObject.class || cls == DBObject.class) {
 			if (bsonValue instanceof BasicDBObject)
 				return bsonValue;
@@ -66,7 +77,9 @@ public final class DBObjectConverter extends TypeConverter {
 
 	@Override
 	public Object javaToBson(Class<?> cls, Object javaValue) {
-		if (cls == BasicDBObject.class || cls == DBObject.class) {
+		if (cls == MObject.class) {
+			return javaValue;
+		} else if (cls == BasicDBObject.class || cls == DBObject.class) {
 			if (javaValue instanceof BasicDBObject)
 				return javaValue;
 			if (javaValue instanceof DBObject)
