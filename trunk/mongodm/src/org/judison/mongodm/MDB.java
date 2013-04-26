@@ -36,7 +36,9 @@ import java.util.WeakHashMap;
 
 import com.mongodb.DB;
 import com.mongodb.DBAddress;
+import com.mongodb.DBCollection;
 import com.mongodb.Mongo;
+import com.mongodb.MongoException;
 
 public class MDB {
 
@@ -68,6 +70,7 @@ public class MDB {
 
 	private final DB database;
 	private Map<Object, MCollection<?>> collections = new HashMap<Object, MCollection<?>>();
+	private final DBCollection _cmd;
 
 	public MDB(String url) throws UnknownHostException {
 		this(Mongo.connect(new DBAddress(url)));
@@ -79,7 +82,63 @@ public class MDB {
 
 	public MDB(DB database) {
 		this.database = database;
-		database.getCollection("$cmd").setDBDecoderFactory(MDecoder.FACTORY);
+		_cmd = database.getCollection("$cmd");
+		_cmd.setDBDecoderFactory(MDecoder.FACTORY);
+	}
+
+	private MongoException getException(MObject cmd, MObject res) {
+		Object _ok = res.get("ok");
+		boolean ok;
+		if (_ok instanceof Boolean)
+			ok = ((Boolean)_ok).booleanValue();
+		else if (_ok instanceof Number)
+			ok = ((Number)_ok).intValue() == 1;
+		else
+			ok = false;
+
+		if (!ok) {
+			StringBuilder buf = new StringBuilder();
+			String cmdName;
+			if (cmd != null) {
+				cmdName = cmd.keySet().iterator().next();
+				buf.append("command failed [").append(cmdName).append("]: ");
+			} else {
+				buf.append("operation failed: ");
+			}
+
+			buf.append(toString());
+
+			return new MongoException(getCode(res), buf.toString());
+		} else {
+			// GLE check
+			String s = (String)res.get("err");
+			if (s != null && !s.isEmpty()) {
+				int code = getCode(res);
+				if (code == 11000 || code == 11001 || s.startsWith("E11000") || s.startsWith("E11001"))
+					return new MongoException.DuplicateKey(code, s);
+				return new MongoException(code, s);
+			}
+		}
+		return null;
+	}
+
+	private int getCode(MObject res) {
+		Object c = res.get("code");
+		if (c == null)
+			c = res.get("$code");
+		if (c == null)
+			c = res.get("assertionCode");
+		if (c == null)
+			return -5;
+		return ((Number)c).intValue();
+	}
+
+	public Object command(MObject cmd) throws MException {
+		MObject res = (MObject)_cmd.findOne(cmd);
+		MongoException e = getException(cmd, res);
+		if (e != null)
+			throw new MException(e);
+		return res.get("result");
 	}
 
 	public <T> void putCollection(Class<T> cls, MCollection<T> coll) throws MException {
