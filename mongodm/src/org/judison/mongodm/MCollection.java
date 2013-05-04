@@ -60,7 +60,7 @@ public class MCollection<T> {
 		if (entityName == null)
 			entityName = typeInfo.entityName;
 		this.coll = mdb.getMongoDB().getCollection(entityName);
-		this.coll.setDBDecoderFactory(MDecoder.FACTORY);
+		this.coll.setDBDecoderFactory(MObject.DB_DECODER_FACTORY);
 
 		if (typeInfo != null)
 			for (IndexInfo idx: typeInfo.indexes)
@@ -177,7 +177,7 @@ public class MCollection<T> {
 	@SuppressWarnings("unchecked")
 	public List<MObject> aggregate(Pipeline pipeline) throws MException {
 		MObject cmd = new MObject("aggregate", coll.getName());
-		cmd.put("pipeline", pipeline.getOperators());
+		cmd.set("pipeline", pipeline.getOperators());
 		return (List<MObject>)mdb.command(cmd);
 	}
 

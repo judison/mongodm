@@ -36,7 +36,7 @@ public class Update {
 	public Update() {}
 
 	public Update put(String name, Object value) {
-		update.put(name, value);
+		update.set(name, value);
 		return this;
 	}
 
@@ -44,9 +44,9 @@ public class Update {
 		MObject sub = (MObject)update.get(operator);
 		if (sub == null) {
 			sub = new MObject();
-			update.put(operator, sub);
+			update.set(operator, sub);
 		}
-		sub.put(field, value);
+		sub.set(field, value);
 	}
 
 	private Object getIn(String operator, String field) {
@@ -97,7 +97,7 @@ public class Update {
 		Object obj = getIn(operator, array);
 		if (obj == null)
 			putIn(operator, array, value);
-		else if (obj instanceof MObject && ((MObject)obj).containsField("$each")) {
+		else if (obj instanceof MObject && ((MObject)obj).contains("$each")) {
 			MObject eh = (MObject)obj;
 			BasicDBList each = (BasicDBList)eh.get("$each");
 			each.add(value);
@@ -106,7 +106,7 @@ public class Update {
 			BasicDBList each = new BasicDBList();
 			each.add(obj);
 			each.add(value);
-			eh.put("$each", each);
+			eh.set("$each", each);
 			putIn(operator, array, eh);
 		}
 	}

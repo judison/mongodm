@@ -83,7 +83,7 @@ public class MDB {
 	public MDB(DB database) {
 		this.database = database;
 		_cmd = database.getCollection("$cmd");
-		_cmd.setDBDecoderFactory(MDecoder.FACTORY);
+		_cmd.setDBDecoderFactory(MObject.DB_DECODER_FACTORY);
 	}
 
 	private MongoException getException(MObject cmd, MObject res) {

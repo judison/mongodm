@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Judison Oliveira Gil Filho <judison@gmail.com>
+ * Copyright (c) 2012-2013, Judison Oliveira Gil Filho <judison@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -25,47 +25,46 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.judison.mongodm;
-
-import java.util.List;
+package org.judison.mongodm.converter;
 
 import org.bson.BSONObject;
+import org.judison.mongodm.MList;
+import org.judison.mongodm.MObject;
 
 import com.mongodb.BasicDBList;
-import com.mongodb.DBCallback;
-import com.mongodb.DBCollection;
-import com.mongodb.DBDecoder;
-import com.mongodb.DBDecoderFactory;
-import com.mongodb.DefaultDBCallback;
-import com.mongodb.DefaultDBDecoder;
 
-class MDecoder extends DefaultDBDecoder {
+public final class MObjectConverter extends TypeConverter {
 
-	public static final DBDecoderFactory FACTORY = new DBDecoderFactory() {
+	public static final MObjectConverter INSTANCE = new MObjectConverter();
 
-		@Override
-		public DBDecoder create() {
-			return new MDecoder();
-		}
-	};
+	private MObjectConverter() {}
 
 	@Override
-	public DBCallback getDBCallback(DBCollection collection) {
-		return new DefaultDBCallback(collection) {
+	public Object bsonToJava(java.lang.Class<?> cls, Object bsonValue) {
+		if (cls == MObject.class) {
+			if (bsonValue instanceof MObject)
+				return bsonValue;
+			if (bsonValue instanceof BSONObject)
+				return MObject.deepCopy((BSONObject)bsonValue);
+			throw new IllegalArgumentException();
+		}
+		if (cls == MList.class) {
+			if (bsonValue instanceof MObject)
+				return bsonValue;
+			if (bsonValue instanceof BasicDBList)
+				return MObject.deepCopy((BasicDBList)bsonValue);
+			throw new IllegalArgumentException();
+		}
+		throw new IllegalArgumentException();
+	}
 
-			@Override
-			public BSONObject create() {
-				return new MObject();
-			}
-
-			@Override
-			public BSONObject create(boolean array, List<String> path) {
-				if (array)
-					return new BasicDBList();
-				else
-					return new MObject();
-			}
-		};
+	@Override
+	public Object javaToBson(Class<?> cls, Object javaValue) {
+		if (cls == MObject.class)
+			return javaValue;
+		if (cls == MList.class)
+			return javaValue;
+		throw new IllegalArgumentException();
 	}
 
 }

@@ -40,14 +40,14 @@ final class IndexInfo {
 		keys = parseFields(fields);
 		options = new MObject();
 		if (unique)
-			options.put("unique", true);
+			options.set("unique", true);
 		if (sparse)
-			options.put("sparse", true);
+			options.set("sparse", true);
 
 		if (name == null || name.isEmpty())
 			name = DBCollection.genIndexName(keys);
 
-		options.put("name", name);
+		options.set("name", name);
 	}
 
 	public IndexInfo(Index index) {
@@ -58,11 +58,11 @@ final class IndexInfo {
 		MObject keys = new MObject();
 		for (String field: fields)
 			if (field.charAt(0) == '-')
-				keys.put(field.substring(1), -1);
+				keys.set(field.substring(1), -1);
 			else if (field.charAt(0) == '+')
-				keys.put(field.substring(1), +1);
+				keys.set(field.substring(1), +1);
 			else
-				keys.put(field, +1);
+				keys.set(field, +1);
 		return keys;
 	}
 }

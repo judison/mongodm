@@ -137,12 +137,12 @@ public class Query {
 	@SuppressWarnings("unchecked")
 	public Query filter(String prop, Operator oper, Object value) {
 		if (oper == Operator.EQUAL)
-			conds.put(prop, value);
+			conds.set(prop, value);
 		else {
 			Object inner = conds.get(prop); // operator within inner object
 			if (!(inner instanceof Map<?, ?>)) {
 				inner = new HashMap<String, Object>();
-				conds.put(prop, inner);
+				conds.set(prop, inner);
 			}
 			((Map<String, Object>)inner).put(oper.value, value);
 		}
