@@ -27,12 +27,10 @@
  */
 package org.judison.mongodm;
 
-import java.util.ArrayList;
-import java.util.List;
 
 public class Pipeline {
 
-	ArrayList<MObject> operators = new ArrayList<MObject>();
+	MList operators = new MList();
 
 	public Pipeline() {}
 
@@ -108,7 +106,7 @@ public class Pipeline {
 		return this;
 	}
 
-	public List<MObject> getOperators() {
+	public MList getOperators() {
 		return operators;
 	}
 
