@@ -27,7 +27,6 @@
  */
 package org.judison.mongodm;
 
-
 public class Projection {
 
 	private MObject proj = new MObject();
@@ -42,18 +41,18 @@ public class Projection {
 	 * Allows you to map an field or use expressions, works in aggregate pipeline only
 	 */
 	public Projection put(String name, Object value) {
-		proj.put(name, value);
+		proj.set(name, value);
 		return this;
 	}
 
 	public Projection add(String... fields) {
 		for (String field: fields)
 			if (field.charAt(0) == '-')
-				proj.put(field.substring(1), -1);
+				proj.set(field.substring(1), -1);
 			else if (field.charAt(0) == '+')
-				proj.put(field.substring(1), +1);
+				proj.set(field.substring(1), +1);
 			else
-				proj.put(field, +1);
+				proj.set(field, +1);
 		return this;
 	}
 

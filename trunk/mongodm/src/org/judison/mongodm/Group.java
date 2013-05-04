@@ -27,7 +27,6 @@
  */
 package org.judison.mongodm;
 
-
 /**
  * Represents an $group aggregate operator.<br>
  * 
@@ -53,7 +52,7 @@ public class Group {
 	}
 
 	public Group put(String name, Object value) {
-		group.put(name, value);
+		group.set(name, value);
 		return this;
 	}
 
@@ -65,7 +64,7 @@ public class Group {
 		else
 			id = new MObject();
 
-		id.put(name, value);
+		id.set(name, value);
 
 		return put("_id", id);
 	}

@@ -43,15 +43,11 @@ import java.util.Vector;
 
 import org.bson.types.BasicBSONList;
 import org.judison.mongodm.PropertyInfo.Type;
-import org.judison.mongodm.converter.DBObjectConverter;
+import org.judison.mongodm.converter.MObjectConverter;
 import org.judison.mongodm.converter.DateConverter;
 import org.judison.mongodm.converter.NumberConverter;
 import org.judison.mongodm.converter.PassThruConverter;
 import org.judison.mongodm.converter.TypeConverter;
-
-import com.mongodb.BasicDBList;
-import com.mongodb.BasicDBObject;
-import com.mongodb.DBObject;
 
 public final class Mapper {
 
@@ -87,12 +83,9 @@ public final class Mapper {
 		for (Class<?> cls: PassThruConverter.CLASSES)
 			registerTypeConverter(cls, PassThruConverter.INSTANCE);
 
-		DBObjectConverter dbObjectConverter = DBObjectConverter.INSTANCE;
+		MObjectConverter dbObjectConverter = MObjectConverter.INSTANCE;
 		registerTypeConverter(MObject.class, dbObjectConverter);
-		registerTypeConverter(DBObject.class, dbObjectConverter);
-		registerTypeConverter(BasicDBObject.class, dbObjectConverter);
-		registerTypeConverter(BasicDBList.class, dbObjectConverter);
-		registerTypeConverter(BasicBSONList.class, dbObjectConverter);
+		registerTypeConverter(MList.class, dbObjectConverter);
 	}
 
 	private static Map<Class<?>, TypeInfo> typeInfos = new HashMap<Class<?>, TypeInfo>();
@@ -344,12 +337,12 @@ public final class Mapper {
 				Class<?> fieldClass = f.getType();
 
 				if (prop.type == Type.ARRAY)
-					data.put(name, arrayJavaToBson(prop.cls, prop.itemCls, value));
+					data.set(name, arrayJavaToBson(prop.cls, prop.itemCls, value));
 				else
-					data.put(name, javaToBson(fieldClass, value, data.get(name)));
+					data.set(name, javaToBson(fieldClass, value, data.get(name)));
 
 			} else {
-				data.removeField(name);
+				data.remove(name);
 			}
 		} catch (IllegalAccessException e) {
 			throw new RuntimeException(e);
