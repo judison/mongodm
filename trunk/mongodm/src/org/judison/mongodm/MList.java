@@ -56,6 +56,7 @@ public class MList extends MObject implements List<Object> {
 
 	@Override
 	public boolean add(Object value) {
+		checkValue(value);
 		synchronized (list) {
 			return list.add(value);
 		}
@@ -63,6 +64,7 @@ public class MList extends MObject implements List<Object> {
 
 	@Override
 	public Object set(int index, Object value) {
+		checkValue(value);
 		synchronized (list) {
 			if (index >= size()) { // estou adicionando, e nao alterando...
 				// adiciona null's se precisar preenxer
