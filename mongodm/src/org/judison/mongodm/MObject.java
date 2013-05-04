@@ -193,8 +193,6 @@ public class MObject implements BSONObject, DBObject {
 			return;
 		if (value instanceof BSONTimestamp || value instanceof Symbol || value instanceof Code || value instanceof CodeWScope)
 			return;
-		if (value instanceof byte[])
-			return;
 
 		throw new IllegalArgumentException(getClass().getSimpleName() + " can't store a " + value.getClass().getName());
 	}
