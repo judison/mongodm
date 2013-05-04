@@ -27,9 +27,6 @@
  */
 package org.judison.mongodm;
 
-import java.util.HashMap;
-import java.util.Map;
-
 public class Query {
 
 	public enum Operator {
@@ -134,17 +131,16 @@ public class Query {
 		return filter(prop, oper, value);
 	}
 
-	@SuppressWarnings("unchecked")
 	public Query filter(String prop, Operator oper, Object value) {
 		if (oper == Operator.EQUAL)
 			conds.set(prop, value);
 		else {
 			Object inner = conds.get(prop); // operator within inner object
-			if (!(inner instanceof Map<?, ?>)) {
-				inner = new HashMap<String, Object>();
+			if (!(inner instanceof MObject)) {
+				inner = new MObject();
 				conds.set(prop, inner);
 			}
-			((Map<String, Object>)inner).put(oper.value, value);
+			((MObject)inner).set(oper.value, value);
 		}
 		return this;
 	}
