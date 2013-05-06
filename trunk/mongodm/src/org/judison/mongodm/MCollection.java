@@ -31,7 +31,6 @@ import java.util.List;
 
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
-import com.mongodb.DBObject;
 import com.mongodb.MongoException;
 import com.mongodb.WriteResult;
 
@@ -89,7 +88,7 @@ public class MCollection<T> {
 		}
 	}
 
-	public T findOne(DBObject query) throws MException {
+	public T findOne(MObject query) throws MException {
 		try {
 			MObject data = (MObject)coll.findOne(query);
 			return mapLoad(data);
