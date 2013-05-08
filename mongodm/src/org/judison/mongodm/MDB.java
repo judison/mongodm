@@ -134,11 +134,17 @@ public class MDB {
 	}
 
 	public Object command(MObject cmd) throws MException {
-		MObject res = (MObject)_cmd.findOne(cmd);
-		MongoException e = getException(cmd, res);
-		if (e != null)
-			throw new MException(e);
-		return res.get("result");
+		long t = System.nanoTime();
+		try {
+			MObject res = (MObject)_cmd.findOne(cmd);
+			MongoException e = getException(cmd, res);
+			if (e != null)
+				throw new MException(e);
+
+			return res.get("result");
+		} finally {
+			timerTotal += System.nanoTime() - t;
+		}
 	}
 
 	public <T> void putCollection(Class<T> cls, MCollection<T> coll) throws MException {
@@ -214,4 +220,19 @@ public class MDB {
 			}
 		}
 	}
+
+	long timerTotal;
+
+	public void clearTimer() {
+		timerTotal = 0;
+	}
+
+	public long getTimeInMillis() {
+		return timerTotal / 1000000;
+	}
+
+	public long getTimeInNanos() {
+		return timerTotal;
+	}
+
 }

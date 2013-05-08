@@ -36,6 +36,7 @@ public class MCursor<T> implements Iterable<T>, Iterator<T>, Closeable {
 
 	private final MCollection<?> coll;
 	private final DBCursor dbCursor;
+	private final MDB mdb;
 	private final boolean dbObj;
 	private final Class<T> cls;
 	private T last = null;
@@ -43,6 +44,7 @@ public class MCursor<T> implements Iterable<T>, Iterator<T>, Closeable {
 	MCursor(MCollection<?> coll, Class<T> cls, DBCursor dbCursor, boolean dbObj) {
 		this.coll = coll;
 		this.dbCursor = dbCursor;
+		this.mdb = coll.mdb;
 		this.cls = cls;
 		coll.mdb.onCursorCreated(this, cls);
 		this.dbObj = dbObj;
@@ -56,24 +58,39 @@ public class MCursor<T> implements Iterable<T>, Iterator<T>, Closeable {
 
 	@Override
 	public void close() {
-		dbCursor.close();
-		coll.mdb.onCursorClosed(this);
+		long t = System.nanoTime();
+		try {
+			dbCursor.close();
+			coll.mdb.onCursorClosed(this);
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
+		}
 	}
 
 	@Override
 	public boolean hasNext() {
-		return dbCursor.hasNext();
+		long t = System.nanoTime();
+		try {
+			return dbCursor.hasNext();
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
+		}
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
 	public T next() {
-		MObject data = (MObject)dbCursor.next();
-		if (dbObj)
-			last = (T)data;
-		else
-			last = (T)coll.mapLoad(data);
-		return last;
+		long t = System.nanoTime();
+		try {
+			MObject data = (MObject)dbCursor.next();
+			if (dbObj)
+				last = (T)data;
+			else
+				last = (T)coll.mapLoad(data);
+			return last;
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
+		}
 	}
 
 	public T getLast() {
@@ -86,44 +103,79 @@ public class MCursor<T> implements Iterable<T>, Iterator<T>, Closeable {
 	}
 
 	private MCursor<T> copy() {
-		MCursor<T> copy = new MCursor<T>(coll, cls, dbCursor.copy(), dbObj);
-		return copy;
+		long t = System.nanoTime();
+		try {
+			MCursor<T> copy = new MCursor<T>(coll, cls, dbCursor.copy(), dbObj);
+			return copy;
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
+		}
 	}
 
 	public MCursor<T> sort(String... fields) {
-		MObject orderBy = IndexInfo.parseFields(fields);
-		dbCursor.sort(orderBy);
-		return this;
+		long t = System.nanoTime();
+		try {
+			MObject orderBy = IndexInfo.parseFields(fields);
+			dbCursor.sort(orderBy);
+			return this;
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
+		}
 	}
 
 	public MCursor<T> limit(int n) {
-		dbCursor.limit(n);
-		return this;
+		long t = System.nanoTime();
+		try {
+			dbCursor.limit(n);
+			return this;
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
+		}
 	}
 
 	public MCursor<T> skip(int n) {
-		dbCursor.skip(n);
-		return this;
+		long t = System.nanoTime();
+		try {
+			dbCursor.skip(n);
+			return this;
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
+		}
 	}
 
 	public MCursor<T> skipAndLimit(int skip, int limit) {
-		dbCursor.skip(skip);
-		dbCursor.limit(limit);
-		return this;
+		long t = System.nanoTime();
+		try {
+			dbCursor.skip(skip);
+			dbCursor.limit(limit);
+			return this;
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
+		}
 	}
 
 	/**
 	 * @return The number of objects matching the query <b>NOT TAKING</b> limit/skip into consideration
 	 */
 	public int count() {
-		return dbCursor.count();
+		long t = System.nanoTime();
+		try {
+			return dbCursor.count();
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
+		}
 	}
 
 	/**
 	 * @return The number of objects matching the query <b>taking</b> limit/skip into consideration
 	 */
 	public int size() {
-		return dbCursor.size();
+		long t = System.nanoTime();
+		try {
+			return dbCursor.size();
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
+		}
 	}
 
 	@Override
