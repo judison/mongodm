@@ -58,6 +58,7 @@ public class MCollection<T> {
 			}
 		if (entityName == null)
 			entityName = typeInfo.entityName;
+		long t = System.nanoTime();
 		this.coll = mdb.getMongoDB().getCollection(entityName);
 		this.coll.setDBDecoderFactory(MObject.DB_DECODER_FACTORY);
 
@@ -68,86 +69,114 @@ public class MCollection<T> {
 				} catch (MongoException e) {
 					throw new MException(e);
 				}
+		mdb.timerTotal += System.nanoTime() - t;
 	}
 
 	public T load(Object id) throws MException {
+		long t = System.nanoTime();
 		try {
 			MObject data = (MObject)coll.findOne(id);
 			return mapLoad(data);
 		} catch (MongoException e) {
 			throw new MException(e);
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
 		}
 	}
 
 	public T findOne() throws MException {
+		long t = System.nanoTime();
 		try {
 			MObject data = (MObject)coll.findOne();
 			return mapLoad(data);
 		} catch (MongoException e) {
 			throw new MException(e);
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
 		}
 	}
 
 	public T findOne(MObject query) throws MException {
+		long t = System.nanoTime();
 		try {
 			MObject data = (MObject)coll.findOne(query);
 			return mapLoad(data);
 		} catch (MongoException e) {
 			throw new MException(e);
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
 		}
 	}
 
 	public T findOne(Query query) throws MException {
+		long t = System.nanoTime();
 		try {
 			MObject data = (MObject)coll.findOne(query.toMObject());
 			return mapLoad(data);
 		} catch (MongoException e) {
 			throw new MException(e);
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
 		}
 	}
 
 	public MCursor<T> find() throws MException {
+		long t = System.nanoTime();
 		try {
 			DBCursor cursor = coll.find();
 			return new MCursor<T>(this, cls, cursor, false);
 		} catch (MongoException e) {
 			throw new MException(e);
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
 		}
 	}
 
 	public MCursor<T> find(MObject query) throws MException {
+		long t = System.nanoTime();
 		try {
 			DBCursor cursor = coll.find(query);
 			return new MCursor<T>(this, cls, cursor, false);
 		} catch (MongoException e) {
 			throw new MException(e);
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
 		}
 	}
 
 	public MCursor<T> find(Query query) throws MException {
+		long t = System.nanoTime();
 		try {
 			DBCursor cursor = coll.find(query.toMObject());
 			return new MCursor<T>(this, cls, cursor, false);
 		} catch (MongoException e) {
 			throw new MException(e);
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
 		}
 	}
 
 	public MCursor<MObject> find(MObject query, MObject projection) throws MException {
+		long t = System.nanoTime();
 		try {
 			DBCursor cursor = coll.find(query, projection);
 			return new MCursor<MObject>(this, MObject.class, cursor, true);
 		} catch (MongoException e) {
 			throw new MException(e);
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
 		}
 	}
 
 	public MCursor<MObject> find(Query query, Projection projection) throws MException {
+		long t = System.nanoTime();
 		try {
 			DBCursor cursor = coll.find(query.toMObject(), projection.toMObject());
 			return new MCursor<MObject>(this, MObject.class, cursor, true);
 		} catch (MongoException e) {
 			throw new MException(e);
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
 		}
 	}
 
@@ -177,7 +206,7 @@ public class MCollection<T> {
 	public List<MObject> aggregate(Pipeline pipeline) throws MException {
 		MObject cmd = new MObject("aggregate", coll.getName());
 		cmd.set("pipeline", pipeline.getOperators());
-		return (List<MObject>)mdb.command(cmd);
+		return (List<MObject>)mdb.command(cmd); // aqui tem timer
 	}
 
 	private void checkResult(WriteResult res) throws MException {
@@ -187,6 +216,7 @@ public class MCollection<T> {
 	}
 
 	public void save(T object) throws MException {
+		long t = System.nanoTime();
 		try {
 			if (cls == MObject.class) {
 				MObject data = (MObject)object;
@@ -211,6 +241,8 @@ public class MCollection<T> {
 			}
 		} catch (MongoException e) {
 			throw new MException(e);
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
 		}
 	}
 
@@ -227,29 +259,54 @@ public class MCollection<T> {
 	}
 
 	public int update(MObject query, MObject update, boolean upsert, boolean multi) throws MException {
-		WriteResult res = coll.update(query, update, upsert, multi);
-		checkResult(res);
-		return res.getN();
+		long t = System.nanoTime();
+		try {
+			WriteResult res = coll.update(query, update, upsert, multi);
+			checkResult(res);
+			return res.getN();
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
+		}
 	}
 
 	public void remove(T object) throws MException {
-		MObject data = new MObject();
-		Mapper.saveEntity(object, data);
-		WriteResult res = coll.remove(new MObject("_id", data.get("_id")));
-		checkResult(res);
+		long t = System.nanoTime();
+		try {
+			MObject data = new MObject();
+			Mapper.saveEntity(object, data);
+			WriteResult res = coll.remove(new MObject("_id", data.get("_id")));
+			checkResult(res);
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
+		}
 	}
 
 	public void removeById(Object id) throws MException {
-		WriteResult res = coll.remove(new MObject("_id", id));
-		checkResult(res);
+		long t = System.nanoTime();
+		try {
+			WriteResult res = coll.remove(new MObject("_id", id));
+			checkResult(res);
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
+		}
 	}
 
 	public long count() {
-		return coll.count();
+		long t = System.nanoTime();
+		try {
+			return coll.count();
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
+		}
 	}
 
 	public long count(Query query) {
-		return coll.count(query.toMObject());
+		long t = System.nanoTime();
+		try {
+			return coll.count(query.toMObject());
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
+		}
 	}
 
 	@SuppressWarnings("unchecked")
