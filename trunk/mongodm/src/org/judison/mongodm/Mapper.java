@@ -41,7 +41,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Vector;
 
-import org.bson.types.BasicBSONList;
 import org.judison.mongodm.PropertyInfo.Type;
 import org.judison.mongodm.converter.DateConverter;
 import org.judison.mongodm.converter.LatLngConverter;
@@ -352,12 +351,13 @@ public final class Mapper {
 			throw new RuntimeException(e);
 		}
 	}
-
+	
 	private static Object arrayBsonToJava(Class<?> cls, Class<?> itemCls, Object value) throws IllegalAccessException {
-		if (!(value instanceof BasicBSONList))
+		if (!(value instanceof List))
 			throw new IllegalArgumentException();
 
-		BasicBSONList blist = (BasicBSONList)value;
+		@SuppressWarnings("unchecked")
+		List<Object> blist = (List<Object>)value;
 
 		// Trata Array's
 		if (cls.isArray()) {
@@ -425,29 +425,29 @@ public final class Mapper {
 
 	private static Object arrayJavaToBson(Class<?> cls, Class<?> itemCls, Object value) {
 		if (value.getClass().isArray()) {
-			BasicBSONList blist = new BasicBSONList();
+			MList mlist = new MList();
 
 			if (itemCls == int.class) {
 				int[] array = (int[])value;
 				for (int item: array)
-					blist.add(item);
+					mlist.add(item);
 			} else if (itemCls == long.class) {
 				long[] array = (long[])value;
 				for (long item: array)
-					blist.add(item);
+					mlist.add(item);
 			} else {
 				Object[] array = (Object[])value;
 				for (Object item: array)
-					blist.add(javaToBson(itemCls, item, null));
+					mlist.add(javaToBson(itemCls, item, null));
 			}
 
-			return blist;
+			return mlist;
 		}
 
 		if (!(value instanceof Collection<?>))
 			throw new IllegalArgumentException();
 
-		BasicBSONList blist = new BasicBSONList();
+		MList blist = new MList();
 
 		Collection<?> coll = (Collection<?>)value;
 		for (Object item: coll)
