@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Judison Oliveira Gil Filho <judison@gmail.com>
+ * Copyright (c) 2013-2014, Judison Oliveira Gil Filho <judison@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,7 @@
  */
 package org.judison.mongodm;
 
+
 public class Projection {
 
 	private MObject proj = new MObject();
@@ -41,18 +42,18 @@ public class Projection {
 	 * Allows you to map an field or use expressions, works in aggregate pipeline only
 	 */
 	public Projection put(String name, Object value) {
-		proj.set(name, value);
+		proj.put(name, value);
 		return this;
 	}
 
 	public Projection add(String... fields) {
 		for (String field: fields)
 			if (field.charAt(0) == '-')
-				proj.set(field.substring(1), -1);
+				proj.put(field.substring(1), -1);
 			else if (field.charAt(0) == '+')
-				proj.set(field.substring(1), +1);
+				proj.put(field.substring(1), +1);
 			else
-				proj.set(field, +1);
+				proj.put(field, +1);
 		return this;
 	}
 

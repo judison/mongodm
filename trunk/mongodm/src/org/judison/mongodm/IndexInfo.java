@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, Judison Oliveira Gil Filho <judison@gmail.com>
+ * Copyright (c) 2012-2014, Judison Oliveira Gil Filho <judison@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -29,8 +29,6 @@ package org.judison.mongodm;
 
 import org.judison.mongodm.annotations.Index;
 
-import com.mongodb.DBCollection;
-
 final class IndexInfo {
 
 	final MObject keys;
@@ -40,14 +38,14 @@ final class IndexInfo {
 		keys = parseFields(fields);
 		options = new MObject();
 		if (unique)
-			options.set("unique", true);
+			options.put("unique", true);
 		if (sparse)
-			options.set("sparse", true);
+			options.put("sparse", true);
 
 		if (name == null || name.isEmpty())
-			name = DBCollection.genIndexName(keys);
+			name = genIndexName(keys);
 
-		options.set("name", name);
+		options.put("name", name);
 	}
 
 	public IndexInfo(Index index) {
@@ -58,11 +56,24 @@ final class IndexInfo {
 		MObject keys = new MObject();
 		for (String field: fields)
 			if (field.charAt(0) == '-')
-				keys.set(field.substring(1), -1);
+				keys.put(field.substring(1), -1);
 			else if (field.charAt(0) == '+')
-				keys.set(field.substring(1), +1);
+				keys.put(field.substring(1), +1);
 			else
-				keys.set(field, +1);
+				keys.put(field, +1);
 		return keys;
 	}
+	
+	public static String genIndexName(MObject keys){
+        StringBuilder name = new StringBuilder();
+        for ( String s : keys.keySet() ){
+            if ( name.length() > 0 )
+                name.append( '_' );
+            name.append( s ).append( '_' );
+            Object val = keys.get( s );
+            if ( val instanceof Number || val instanceof String )
+                name.append( val.toString().replace( ' ', '_' ) );
+        }
+        return name.toString();
+    }
 }

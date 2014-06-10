@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, Judison Oliveira Gil Filho <judison@gmail.com>
+ * Copyright (c) 2012-2014, Judison Oliveira Gil Filho <judison@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -27,10 +27,10 @@
  */
 package org.judison.mongodm.converter;
 
-public abstract class TypeConverter {
+public abstract class TypeConverter<T> {
 
-	public abstract Object bsonToJava(Class<?> javaClass, Object bsonValue);
+	public abstract T bsonToJava(Object bsonValue);
 
-	public abstract Object javaToBson(Class<?> javaClass, Object javaValue);
+	public abstract Object javaToBson(T javaValue);
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, Judison Oliveira Gil Filho <judison@gmail.com>
+ * Copyright (c) 2012-2014, Judison Oliveira Gil Filho <judison@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -133,14 +133,14 @@ public class Query {
 
 	public Query filter(String prop, Operator oper, Object value) {
 		if (oper == Operator.EQUAL)
-			conds.set(prop, value);
+			conds.put(prop, value);
 		else {
 			Object inner = conds.get(prop); // operator within inner object
 			if (!(inner instanceof MObject)) {
 				inner = new MObject();
-				conds.set(prop, inner);
+				conds.put(prop, inner);
 			}
-			((MObject)inner).set(oper.value, value);
+			((MObject)inner).put(oper.value, value);
 		}
 		return this;
 	}

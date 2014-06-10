@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Judison Oliveira Gil Filho <judison@gmail.com>
+ * Copyright (c) 2013-2014, Judison Oliveira Gil Filho <judison@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -27,8 +27,6 @@
  */
 package org.judison.mongodm;
 
-import com.mongodb.BasicDBList;
-
 public class Update {
 
 	private MObject update = new MObject();
@@ -36,7 +34,7 @@ public class Update {
 	public Update() {}
 
 	public Update put(String name, Object value) {
-		update.set(name, value);
+		update.put(name, value);
 		return this;
 	}
 
@@ -44,9 +42,9 @@ public class Update {
 		MObject sub = (MObject)update.get(operator);
 		if (sub == null) {
 			sub = new MObject();
-			update.set(operator, sub);
+			update.put(operator, sub);
 		}
-		sub.set(field, value);
+		sub.put(field, value);
 	}
 
 	private Object getIn(String operator, String field) {
@@ -97,16 +95,16 @@ public class Update {
 		Object obj = getIn(operator, array);
 		if (obj == null)
 			putIn(operator, array, value);
-		else if (obj instanceof MObject && ((MObject)obj).contains("$each")) {
+		else if (obj instanceof MObject && ((MObject)obj).containsField("$each")) {
 			MObject eh = (MObject)obj;
-			BasicDBList each = (BasicDBList)eh.get("$each");
+			MList each = (MList)eh.get("$each");
 			each.add(value);
 		} else {
 			MObject eh = new MObject();
-			BasicDBList each = new BasicDBList();
+			MList each = new MList();
 			each.add(obj);
 			each.add(value);
-			eh.set("$each", each);
+			eh.put("$each", each);
 			putIn(operator, array, eh);
 		}
 	}

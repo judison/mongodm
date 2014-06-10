@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Judison Oliveira Gil Filho <judison@gmail.com>
+ * Copyright (c) 2013-2014, Judison Oliveira Gil Filho <judison@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -51,13 +51,13 @@ public class LatLng {
 		if (obj instanceof MList) {
 			this.lng = normalizeLongitude(((Number)((MList)obj).get(0)).doubleValue());
 			this.lat = normalizeLatitude(((Number)((MList)obj).get(1)).doubleValue());
-		} else if (obj.contains("lng") && obj.contains("lat")) {
+		} else if (obj.containsField("lng") && obj.containsField("lat")) {
 			this.lng = normalizeLongitude(((Number)obj.get("lng")).doubleValue());
 			this.lat = normalizeLatitude(((Number)obj.get("lat")).doubleValue());
-		} else if (obj.contains("lon") && obj.contains("lat")) {
+		} else if (obj.containsField("lon") && obj.containsField("lat")) {
 			this.lng = normalizeLongitude(((Number)obj.get("lon")).doubleValue());
 			this.lat = normalizeLatitude(((Number)obj.get("lat")).doubleValue());
-		} else if (obj.contains("longitude") && obj.contains("latitude")) {
+		} else if (obj.containsField("longitude") && obj.containsField("latitude")) {
 			this.lng = normalizeLongitude(((Number)obj.get("longitude")).doubleValue());
 			this.lat = normalizeLatitude(((Number)obj.get("latitude")).doubleValue());
 		} else {
@@ -103,8 +103,8 @@ public class LatLng {
 
 	public MObject toMObject() {
 		MObject obj = new MObject();
-		obj.set("lng", lng);
-		obj.set("lat", lat);
+		obj.put("lng", lng);
+		obj.put("lat", lat);
 		return obj;
 	}
 

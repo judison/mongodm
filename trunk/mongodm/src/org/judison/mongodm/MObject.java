@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Judison Oliveira Gil Filho <judison@gmail.com>
+ * Copyright (c) 2013-2014, Judison Oliveira Gil Filho <judison@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -29,12 +29,11 @@ package org.judison.mongodm;
 
 import java.util.Date;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 import java.util.UUID;
+import java.util.Map.Entry;
 import java.util.regex.Pattern;
+import java.util.Set;
 
 import org.bson.BSONObject;
 import org.bson.types.BSONTimestamp;
@@ -45,94 +44,16 @@ import org.bson.types.MinKey;
 import org.bson.types.ObjectId;
 import org.bson.types.Symbol;
 
-import com.mongodb.DBCallback;
-import com.mongodb.DBCollection;
-import com.mongodb.DBDecoder;
-import com.mongodb.DBDecoderFactory;
 import com.mongodb.DBObject;
-import com.mongodb.DefaultDBCallback;
-import com.mongodb.DefaultDBDecoder;
 import com.mongodb.util.JSON;
-import com.mongodb.util.JSONCallback;
 
-public class MObject implements BSONObject, DBObject {
-
-	public static class MDBCallback extends DefaultDBCallback {
-
-		public MDBCallback(DBCollection coll) {
-			super(coll);
-		}
-
-		@Override
-		public BSONObject create() {
-			return new MObject();
-		}
-
-		@Override
-		public BSONObject create(boolean array, List<String> path) {
-			if (array)
-				return new MList();
-			else
-				return new MObject();
-		}
-	}
-
-	public static class MJSONCallback extends JSONCallback {
-
-		@Override
-		public BSONObject create() {
-			return new MObject();
-		}
-
-		@Override
-		public BSONObject create(boolean array, List<String> path) {
-			if (array)
-				return new MList();
-			else
-				return new MObject();
-		}
-	}
-
-	public static final DBDecoderFactory DB_DECODER_FACTORY = new DBDecoderFactory() {
-
-		@Override
-		public DBDecoder create() {
-			return new DefaultDBDecoder() {
-
-				@Override
-				public DBCallback getDBCallback(DBCollection collection) {
-					return new MDBCallback(collection);
-				}
-			};
-		}
-	};
+public class MObject implements DBObject, BSONObject {
 
 	public static MObject parseJSON(String str) {
-		return (MObject)JSON.parse(str, new MJSONCallback());
+		return (MObject)JSON.parse(str, MDecoder.FACTORY.create().getDBCallback(null));
 	}
 
-	public static MObject deepCopy(BSONObject src) {
-		if (src == null)
-			return null;
-		if (src instanceof List) {
-			MList dst = new MList();
-			for (Object item: (List<?>)src)
-				if (item instanceof BSONObject)
-					dst.add(deepCopy((BSONObject)item));
-				else
-					dst.add(item);
-			return dst;
-		}
-
-		MObject dst = new MObject();
-		for (String name: src.keySet()) {
-			Object value = src.get(name);
-			if (value instanceof BSONObject)
-				value = deepCopy((BSONObject)value);
-			dst.set(name, value);
-		}
-		return dst;
-	}
+	private Object obj;
 
 	private LinkedHashMap<String, Object> map;
 
@@ -142,7 +63,7 @@ public class MObject implements BSONObject, DBObject {
 
 	public MObject(String name, Object value) {
 		this(true);
-		set(name, value);
+		put(name, value);
 	}
 
 	public MObject(BSONObject other) {
@@ -150,20 +71,41 @@ public class MObject implements BSONObject, DBObject {
 		putAll(other);
 	}
 
-	/** Usado pelo MList **/
+	MObject(TypeInfo typeInfo, Object obj) {
+		this(true);
+		this.obj = obj;
+		for (PropertyInfo pi: typeInfo.properties)
+			map.put(pi.name, pi);
+	}
+
 	MObject(boolean isMObject) {
 		if (isMObject)
 			map = new LinkedHashMap<String, Object>();
+	}
+
+	void mapToObject(TypeInfo typeInfo, Object obj) {
+		if (this.obj != null)
+			throw new IllegalStateException("MObject already mapped");
+		this.obj = obj;
+
+		for (PropertyInfo pi: typeInfo.properties) {
+			Object bsonValue = map.put(pi.name, pi);
+			setField(pi, obj, bsonValue);
+		}
+	}
+
+	public boolean isBacked() {
+		return obj != null;
+	}
+
+	public Object getBackendObject() {
+		return obj;
 	}
 
 	@Override
 	public String toString() {
 		return JSON.serialize(this);
 	}
-
-	//==========================
-	// checkValue()
-	//==========================
 
 	protected void checkValue(Object value) {
 		if (value instanceof MObject)
@@ -196,113 +138,58 @@ public class MObject implements BSONObject, DBObject {
 
 		throw new IllegalArgumentException(getClass().getSimpleName() + " can't store a " + value.getClass().getName());
 	}
-
-	//==========================
-	// set(name, value)
-	//==========================
-
-	public Object set(String name, Object value) {
-		checkValue(value);
-		synchronized (map) {
-			return map.put(name, value);
-		}
-	}
-
+	
 	@Override
-	@Deprecated
 	public Object put(String name, Object value) {
 		checkValue(value);
 		synchronized (map) {
+			Object old = map.get(name);
+			if (old instanceof PropertyInfo)
+				try {
+					PropertyInfo pi = (PropertyInfo)old;
+					old = getField(pi, obj);
+					setField(pi, obj, value);
+
+					return old;
+				} catch (Throwable e) {
+					throw new RuntimeException(e);
+				}
+
 			return map.put(name, value);
 		}
 	}
 
 	@Override
 	public void putAll(BSONObject o) {
-		synchronized (map) {
-			for (String name: o.keySet()) {
-				Object value = o.get(name);
-				checkValue(value);
-				map.put(name, value);
-			}
-		}
+		for (String name: o.keySet())
+			put(name, o.get(name));
 	}
 
 	@SuppressWarnings("rawtypes")
 	@Override
 	public void putAll(Map m) {
-		synchronized (map) {
-			for (Object o: m.entrySet()) {
-				Entry e = (Entry)o;
-				Object value = e.getValue();
-				checkValue(value);
-				map.put(String.valueOf(e.getKey()), value);
-			}
+		for (Object o: m.entrySet()) {
+			Entry e = (Entry)o;
+			put(String.valueOf(e.getKey()), e.getValue());
 		}
 	}
-
-	//==========================
-	// get(name)
-	//==========================
 
 	@Override
 	public Object get(String name) {
 		synchronized (map) {
-			return map.get(name);
+			Object value = map.get(name);
+			if (value instanceof PropertyInfo)
+				try {
+					PropertyInfo pi = (PropertyInfo)value;
+					value = getField(pi, obj);
+					return value;
+				} catch (Throwable e) {
+					throw new RuntimeException(e);
+				}
+
+			return value;
 		}
 	}
-
-	//==========================
-	// remove(name)
-	//==========================
-
-	public Object remove(String name) {
-		synchronized (map) {
-			return map.remove(name);
-		}
-	}
-
-	@Override
-	@Deprecated
-	public Object removeField(String name) {
-		return remove(name);
-	}
-
-	//==========================
-	// contains(name)
-	//==========================
-
-	public boolean contains(String name) {
-		synchronized (map) {
-			return map.containsKey(name);
-		}
-	}
-
-	@Override
-	@Deprecated
-	public boolean containsKey(String name) {
-		return contains(name);
-	}
-
-	@Override
-	@Deprecated
-	public boolean containsField(String name) {
-		return contains(name);
-	}
-
-	//==========================
-	// isEmpty()
-	//==========================
-
-	public boolean isEmpty() {
-		synchronized (map) {
-			return map.size() == 0;
-		}
-	}
-
-	//==========================
-	// BSONObject Stuff
-	//==========================
 
 	@SuppressWarnings("rawtypes")
 	@Override
@@ -312,9 +199,49 @@ public class MObject implements BSONObject, DBObject {
 			for (Entry<String, Object> e: map.entrySet()) {
 				String name = e.getKey();
 				Object value = map.get(name);
+				if (value instanceof PropertyInfo)
+					try {
+						PropertyInfo pi = (PropertyInfo)value;
+						value = getField(pi, obj);
+					} catch (Throwable ex) {
+						throw new RuntimeException(ex);
+					}
 				resp.put(name, value);
 			}
 			return resp;
+		}
+	}
+
+	@Override
+	public Object removeField(String name) {
+		synchronized (map) {
+			Object value = map.get(name);
+			if (value instanceof PropertyInfo)
+				try {
+					PropertyInfo pi = (PropertyInfo)value;
+					value = getField(pi, obj);
+					setField(pi, obj, null);
+					return value;
+				} catch (Throwable e) {
+					throw new RuntimeException(e);
+				}
+
+			map.remove(name);
+			return value;
+		}
+	}
+	
+	@Override
+	@Deprecated
+	public boolean containsKey(String name) {
+		return containsField(name);
+	}
+
+	@Override
+	public boolean containsField(String name) {
+		synchronized (map) {
+			// TODO: ver se eh null, caso seja um PropertyInfo
+			return map.containsKey(name);
 		}
 	}
 
@@ -324,10 +251,6 @@ public class MObject implements BSONObject, DBObject {
 			return map.keySet();
 		}
 	}
-
-	//==========================
-	// DBObject Stuff
-	//==========================
 
 	private boolean partialObject;
 
@@ -341,36 +264,26 @@ public class MObject implements BSONObject, DBObject {
 		return partialObject;
 	}
 
-	/*
-	public int getInt(String name) {
-		Object value = get(name);
-		return ((Number)value).intValue();
+	private static void setField(PropertyInfo pi, Object object, Object bsonValue) {
+		try {
+			pi.field.set(object, Mapper.bsonToJava(pi.cls, pi.itemCls, bsonValue));
+		} catch (IllegalAccessException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
-	public int getInt(String name, int def) {
-		Object value = get(name);
-		if (value == null)
-			return def;
-		return ((Number)value).intValue();
+	private static Object getField(PropertyInfo pi, Object object) {
+		try {
+			return Mapper.javaToBson(pi.field.get(object), pi);
+		} catch (IllegalAccessException e) {
+			throw new RuntimeException(e);
+		}
 	}
-
-	public long getLong(String name) {
-		Object value = get(name);
-		return ((Number)value).longValue();
-	}
-
-	public long getLong(String name, long def) {
-		Object value = get(name);
-		if (value == null)
-			return def;
-		return ((Number)value).longValue();
-	}
-	*/
-
+	
 	//==========================
 	// deep (Dot Notation) Stuff
 	//==========================
-
+	
 	public Object deepGet(String name) {
 		int dotIdx = name.indexOf('.');
 		if (dotIdx >= 0) {
@@ -385,7 +298,7 @@ public class MObject implements BSONObject, DBObject {
 			return get(name); // otimizar depois...
 	}
 
-	public void deepSet(String name, Object value) {
+	public void deepPut(String name, Object value) {
 		checkValue(value);
 		int dotIdx = name.indexOf('.');
 		if (dotIdx >= 0) {
@@ -394,21 +307,21 @@ public class MObject implements BSONObject, DBObject {
 			Object aux = get(p0); // otimizar depois...
 			if (!(aux instanceof MObject)) {
 				aux = new MObject();
-				set(p0, aux); // otimizar depois...
+				put(p0, aux); // otimizar depois...
 			}
-			((MObject)aux).deepSet(p1, value);
+			((MObject)aux).deepPut(p1, value);
 		} else
-			set(name, value); // otimizar depois...
+			put(name, value); // otimizar depois...
 	}
 
-	public boolean deepContains(String name) {
+	public boolean deepContainsField(String name) {
 		int dotIdx = name.indexOf('.');
 		if (dotIdx >= 0) {
 			String p0 = name.substring(0, dotIdx);
 			String p1 = name.substring(dotIdx + 1);
 			Object aux = get(p0); // otimizar depois...
 			if (aux instanceof MObject)
-				return ((MObject)aux).deepContains(p1);
+				return ((MObject)aux).deepContainsField(p1);
 			else
 				return false; // ou aux eh null, ou nao eh um { }, entao...
 		} else
