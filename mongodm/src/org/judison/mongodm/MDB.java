@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, Judison Oliveira Gil Filho <judison@gmail.com>
+ * Copyright (c) 2012-2014, Judison Oliveira Gil Filho <judison@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -27,23 +27,19 @@
  */
 package org.judison.mongodm;
 
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.WeakHashMap;
 
 import com.mongodb.DB;
-import com.mongodb.DBAddress;
 import com.mongodb.DBCollection;
-import com.mongodb.Mongo;
 import com.mongodb.MongoException;
 
 public class MDB {
 
 	public static final String LICENCE =
-		"Copyright (c) 2012-2013, Judison Oliveira Gil Filho <judison@gmail.com>\n" +
+		"Copyright (c) 2012-2014, Judison Oliveira Gil Filho <judison@gmail.com>\n" +
 			"All rights reserved.\n" +
 			"\n" +
 			"Redistribution and use in source and binary forms, with or without\n" +
@@ -72,18 +68,18 @@ public class MDB {
 	private Map<Object, MCollection<?>> collections = new HashMap<Object, MCollection<?>>();
 	private final DBCollection _cmd;
 
-	public MDB(String url) throws UnknownHostException {
-		this(Mongo.connect(new DBAddress(url)));
-	}
-
-	public MDB(DBAddress url) {
-		this(Mongo.connect(url));
-	}
+//	public MDB(String url) throws UnknownHostException {
+//		this(Mongo.connect(new DBAddress(url)));
+//	}
+//
+//	public MDB(DBAddress url) {
+//		this(Mongo.connect(url));
+//	}
 
 	public MDB(DB database) {
 		this.database = database;
 		_cmd = database.getCollection("$cmd");
-		_cmd.setDBDecoderFactory(MObject.DB_DECODER_FACTORY);
+		_cmd.setDBDecoderFactory(MDecoder.FACTORY);
 	}
 
 	private MongoException getException(MObject cmd, MObject res) {
@@ -114,8 +110,9 @@ public class MDB {
 			String s = (String)res.get("err");
 			if (s != null && !s.isEmpty()) {
 				int code = getCode(res);
-				if (code == 11000 || code == 11001 || s.startsWith("E11000") || s.startsWith("E11001"))
-					return new MongoException.DuplicateKey(code, s);
+				//TODO 
+				//if (code == 11000 || code == 11001 || s.startsWith("E11000") || s.startsWith("E11001"))
+				//	return new MongoException.DuplicateKey(code, s);
 				return new MongoException(code, s);
 			}
 		}
@@ -183,20 +180,6 @@ public class MDB {
 
 	public DB getMongoDB() {
 		return database;
-	}
-
-	private WeakHashMap<Object, MObject> loadedDatas = new WeakHashMap<Object, MObject>();
-
-	void putLoadedData(Object key, MObject value) {
-		synchronized (loadedDatas) {
-			loadedDatas.put(key, value);
-		}
-	}
-
-	MObject getLoadedData(Object key) {
-		synchronized (loadedDatas) {
-			return loadedDatas.get(key);
-		}
 	}
 
 	private List<MCursor<?>> cursors = new ArrayList<MCursor<?>>();

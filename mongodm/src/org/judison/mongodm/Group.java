@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, Judison Oliveira Gil Filho <judison@gmail.com>
+ * Copyright (c) 2012-2014, Judison Oliveira Gil Filho <judison@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -52,7 +52,7 @@ public class Group {
 	}
 
 	public Group put(String name, Object value) {
-		group.set(name, value);
+		group.put(name, value);
 		return this;
 	}
 
@@ -64,7 +64,7 @@ public class Group {
 		else
 			id = new MObject();
 
-		id.set(name, value);
+		id.put(name, value);
 
 		return put("_id", id);
 	}

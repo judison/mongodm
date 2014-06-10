@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, Judison Oliveira Gil Filho <judison@gmail.com>
+ * Copyright (c) 2012-2014, Judison Oliveira Gil Filho <judison@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -28,23 +28,15 @@
 package org.judison.mongodm;
 
 import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Vector;
+import java.util.WeakHashMap;
 
-import org.judison.mongodm.PropertyInfo.Type;
-import org.judison.mongodm.converter.DateConverter;
+import org.bson.BSONObject;
 import org.judison.mongodm.converter.LatLngConverter;
-import org.judison.mongodm.converter.MObjectConverter;
 import org.judison.mongodm.converter.NumberConverter;
 import org.judison.mongodm.converter.PassThruConverter;
 import org.judison.mongodm.converter.TypeConverter;
@@ -53,9 +45,9 @@ public final class Mapper {
 
 	private Mapper() {}
 
-	private static Map<Class<?>, TypeConverter> typeConverters = new HashMap<Class<?>, TypeConverter>();
+	private static Map<Class<?>, TypeConverter<?>> typeConverters = new HashMap<Class<?>, TypeConverter<?>>();
 
-	public static <T> void registerTypeConverter(Class<T> cls, TypeConverter converter) {
+	public static <T> void registerTypeConverter(Class<T> cls, TypeConverter<T> converter) {
 		typeConverters.put(cls, converter);
 	}
 
@@ -64,32 +56,202 @@ public final class Mapper {
 	}
 
 	static {
-		DateConverter dateConverter = DateConverter.INSTANCE;
-		registerTypeConverter(Date.class, dateConverter);
-		registerTypeConverter(java.sql.Date.class, dateConverter);
-		registerTypeConverter(java.sql.Time.class, dateConverter);
-		registerTypeConverter(java.sql.Timestamp.class, dateConverter);
+		typeConverters.put(Byte.class, NumberConverter.BYTE);
+		typeConverters.put(Byte.TYPE, NumberConverter.BYTE);
+		typeConverters.put(Short.class, NumberConverter.SHORT);
+		typeConverters.put(Short.TYPE, NumberConverter.SHORT);
+		typeConverters.put(Integer.class, NumberConverter.INTEGER);
+		typeConverters.put(Integer.TYPE, NumberConverter.INTEGER);
+		typeConverters.put(Long.class, NumberConverter.LONG);
+		typeConverters.put(Long.TYPE, NumberConverter.LONG);
+		typeConverters.put(Float.class, NumberConverter.FLOAT);
+		typeConverters.put(Float.TYPE, NumberConverter.FLOAT);
+		typeConverters.put(Double.class, NumberConverter.DOUBLE);
+		typeConverters.put(Double.TYPE, NumberConverter.DOUBLE);
 
-		NumberConverter numberConverter = NumberConverter.INSTANCE;
-		registerTypeConverter(Byte.class, numberConverter);
-		registerTypeConverter(Short.class, numberConverter);
-		registerTypeConverter(Integer.class, numberConverter);
-		registerTypeConverter(Long.class, numberConverter);
-		registerTypeConverter(Float.class, numberConverter);
-		registerTypeConverter(Double.class, numberConverter);
-		registerTypeConverter(BigInteger.class, numberConverter);
-		registerTypeConverter(BigDecimal.class, numberConverter);
+		typeConverters.put(BigInteger.class, NumberConverter.BIG_INTEGER);
+		typeConverters.put(BigDecimal.class, NumberConverter.BIG_DECIMAL);
 
+		typeConverters.put(LatLng.class, LatLngConverter.INSTANCE);
+		
 		for (Class<?> cls: PassThruConverter.CLASSES)
-			registerTypeConverter(cls, PassThruConverter.INSTANCE);
-
-		MObjectConverter dbObjectConverter = MObjectConverter.INSTANCE;
-		registerTypeConverter(MObject.class, dbObjectConverter);
-		registerTypeConverter(MList.class, dbObjectConverter);
-
-		// teste
-		registerTypeConverter(LatLng.class, LatLngConverter.INSTANCE);
+			typeConverters.put(cls, PassThruConverter.INSTANCE);
 	}
+
+	public static <T> T bsonToJava(Class<T> cls, Object bsonValue) {
+		return bsonToJava(cls, null, bsonValue);
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	public static <T> T bsonToJava(Class<T> cls, Class<?> itemCls, Object bsonValue) {
+
+		if (bsonValue == null)
+			if (cls == Integer.TYPE)
+				return (T)Integer.valueOf(0);
+			else if (cls == Long.TYPE)
+				return (T)Long.valueOf(0);
+			else if (cls == Byte.TYPE)
+				return (T)Byte.valueOf((byte)0);
+			else if (cls == Short.TYPE)
+				return (T)Short.valueOf((short)0);
+			else if (cls == Double.TYPE)
+				return (T)Double.valueOf(0);
+			else if (cls == Float.TYPE)
+				return (T)Float.valueOf(0);
+			else if (cls == Boolean.TYPE)
+				return (T)Boolean.FALSE;
+			else if (cls == Character.TYPE)
+				return (T)Character.valueOf((char)0);
+			else
+				return null;
+
+		TypeConverter<T> tc = (TypeConverter<T>)typeConverters.get(cls);
+		if (tc != null)
+			return tc.bsonToJava(bsonValue);
+
+		if (cls.isEnum())
+			return (T)Enum.valueOf((Class<? extends Enum>)cls, bsonValue.toString());
+
+		if (cls.isArray() || List.class.isAssignableFrom(cls)) {
+
+			if (bsonValue instanceof MList) {
+				MList mlist = (MList)bsonValue;
+				Object javaObj = mlist.getBackendObject();
+				if (javaObj != null)
+					if (cls.isAssignableFrom(javaObj.getClass()))
+						return (T)javaObj;
+					else
+						throw new IllegalArgumentException("Can't map to " + cls.getName() + ", already mapped to " + javaObj.getClass().getName());
+
+				if (itemCls == null)
+					throw new IllegalArgumentException("Can't map to " + cls.getName() + ", item class unknow");
+
+				// precisa criar o obj...
+				if (cls.isArray())
+					javaObj = Array.newInstance(itemCls, mlist.size());
+				else
+					try {
+						javaObj = cls.newInstance();
+					} catch (Throwable e) {
+						throw new IllegalArgumentException("Can't map to " + bsonValue.getClass().getName(), e);
+					}
+
+				mlist.mapToObject(cls.isArray(), javaObj, itemCls);
+
+				synchronized (mobjects) {
+					mobjects.put(javaObj, mlist);
+				}
+
+				return (T)javaObj;
+			}
+
+			throw new IllegalArgumentException("Can't map to " + cls.getName() + ", " + bsonValue.getClass() + " is not a MList");
+
+		}
+
+		if (bsonValue instanceof BSONObject) {
+
+			MObject mobj = null;
+			Object javaObj = null;
+			if (bsonValue instanceof MObject) {
+				mobj = (MObject)bsonValue;
+				javaObj = mobj.getBackendObject();
+				if (javaObj != null)
+					if (cls.isAssignableFrom(javaObj.getClass()))
+						return (T)javaObj;
+					else
+						throw new IllegalArgumentException("Can't map to " + cls.getName() + ", already mapped to " + javaObj.getClass().getName());
+			}
+			BSONObject bsonObject = (BSONObject)bsonValue;
+
+			TypeInfo typeInfo = typeInfos.get(cls);
+			if (typeInfo == null)
+				try {
+					typeInfo = new TypeInfo(cls);
+					typeInfos.put(cls, typeInfo);
+				} catch (Throwable e) {
+					throw new IllegalArgumentException("Can't map to " + cls.getName(), e);
+				}
+
+			try {
+				javaObj = cls.newInstance();
+			} catch (Throwable e) {
+				throw new IllegalArgumentException("Can't map to " + bsonValue.getClass().getName(), e);
+			}
+
+			if (mobj == null) {
+				// to criando um novo MObject, mas o BSONObject q tava la, vai continuar
+				mobj = new MObject(typeInfo, javaObj);
+				mobj.putAll(bsonObject);
+			} else {
+				// faço meu MObject ficar mapeado
+				mobj.mapToObject(typeInfo, javaObj);
+			}
+			synchronized (mobjects) {
+				mobjects.put(javaObj, mobj);
+			}
+
+			return (T)javaObj;
+
+			//--
+		}
+
+		throw new IllegalArgumentException("Can't map " + bsonValue.getClass() + " to " + cls.getName());
+	}
+
+	public static Object javaToBson(Object javaValue) {
+		return javaToBson(javaValue, null);
+	}
+
+	public static Object javaToBson(Object javaValue, PropertyInfo pi) {
+		if (javaValue == null)
+			return null;
+
+		Class<?> cls = javaValue.getClass();
+
+		@SuppressWarnings("unchecked")
+		TypeConverter<Object> tc = (TypeConverter<Object>)typeConverters.get(cls);
+		if (tc != null)
+			return tc.javaToBson(javaValue);
+
+		if (cls.isEnum())
+			return ((Enum<?>)javaValue).name();
+
+		if ((javaValue instanceof List) || cls.isArray())
+			synchronized (mobjects) {
+				MList mlist = (MList)mobjects.get(javaValue);
+				if (mlist == null) {
+					mlist = new MList(cls.isArray(), javaValue, pi == null ? null : pi.itemCls);//TODO nao usar null, se pi == null
+					mobjects.put(javaValue, mlist);
+				}
+				return mlist;
+			}
+
+		if (javaValue instanceof BSONObject)
+			return javaValue;
+
+		TypeInfo typeInfo = typeInfos.get(cls);
+		if (typeInfo == null)
+			try {
+				typeInfo = new TypeInfo(cls);
+				typeInfos.put(cls, typeInfo);
+			} catch (Throwable e) {
+				throw new IllegalArgumentException("Can't map " + cls.getName() + " to MObject", e);
+			}
+
+		synchronized (mobjects) {
+			MObject mobj = mobjects.get(javaValue);
+			if (mobj == null) {
+				mobj = new MObject(typeInfo, javaValue);
+				mobjects.put(javaValue, mobj);
+			}
+			return mobj;
+		}
+	}
+
+	private static WeakHashMap<Object, MObject> mobjects = new WeakHashMap<Object, MObject>();
+
+	//===================================
 
 	private static Map<Class<?>, TypeInfo> typeInfos = new HashMap<Class<?>, TypeInfo>();
 
@@ -119,341 +281,6 @@ public final class Mapper {
 			info = new TypeInfo(cls);
 			typeInfos.put(cls, info);
 		}
-	}
-
-	public static void load(Object object, MObject data) {
-		loadEntity(object, data);
-	}
-
-	private static void loadEntity(Object object, MObject data) {
-		Class<?> cls = object.getClass();
-		TypeInfo typeInfo = getTypeInfo(cls);
-		if (!typeInfo.isEntity)
-			throw new IllegalArgumentException("Class " + cls.getName() + " is not an @Entity");
-
-		for (PropertyInfo fi: typeInfo.properties) {
-			setField(fi, object, data.get(fi.name));
-		}
-	}
-
-	private static void loadEmbedded(Object object, MObject data) {
-		Class<?> cls = object.getClass();
-		TypeInfo typeInfo = getTypeInfo(cls);
-		if (!typeInfo.isEmbedded)
-			throw new IllegalArgumentException("Class " + cls.getName() + " can't be @Embedded");
-
-		for (PropertyInfo fi: typeInfo.properties) {
-			setField(fi, object, data.get(fi.name));
-		}
-	}
-
-	public static void save(Object object, MObject data) {
-		Class<?> cls = object.getClass();
-		TypeInfo typeInfo = getTypeInfo(cls);
-
-		if (typeInfo.isEntity)
-			saveEntity(object, data);
-		else if (typeInfo.isEmbedded)
-			saveEmbedded(object, data);
-		else
-			throw new IllegalArgumentException("Class " + cls.getName() + " is not an @Entity or @Embedded");
-	}
-
-	static void saveEntity(Object object, MObject data) {
-		Class<?> cls = object.getClass();
-		TypeInfo typeInfo = getTypeInfo(cls);
-
-		if (!typeInfo.isEntity)
-			throw new IllegalArgumentException("Class " + cls.getName() + " is not an @Entity");
-
-		for (PropertyInfo fi: typeInfo.properties) {
-			getField(fi, object, data);
-		}
-
-	}
-
-	static void saveEmbedded(Object object, MObject data) {
-		Class<?> cls = object.getClass();
-		TypeInfo typeInfo = getTypeInfo(cls);
-
-		if (!typeInfo.isEmbedded)
-			throw new IllegalArgumentException("Class " + cls.getName() + " is not an @Embedded");
-
-		for (PropertyInfo fi: typeInfo.properties) {
-			getField(fi, object, data);
-		}
-
-	}
-
-	@SuppressWarnings({ "unchecked", "rawtypes" })
-	static Object bsonToJava(Class<?> fieldClass, Object value, Object previous) throws IllegalAccessException {
-		if (fieldClass == String.class)
-			return value.toString();
-
-		// Tem TypeConverter registrado ???
-		TypeConverter converter = typeConverters.get(fieldClass);
-		if (converter != null)
-			return converter.bsonToJava(fieldClass, value);
-
-		// É um enum ??
-		if (fieldClass.isEnum())
-			return Enum.valueOf((Class<? extends Enum>)fieldClass, value.toString());
-
-		// Tem um TypeInfo pra classe esperada?
-		TypeInfo typeInfo = getTypeInfo(fieldClass, false);
-		if (typeInfo != null) {
-			if (value instanceof MObject) {
-				MObject subData = (MObject)value;
-				Object subObj = previous;
-				if (subObj == null)
-					try {
-						subObj = typeInfo.constructor.newInstance();
-					} catch (InstantiationException e) {
-						throw new RuntimeException(e);
-					} catch (InvocationTargetException e) {
-						throw new RuntimeException(e);
-					}
-				loadEmbedded(subObj, subData);
-				return subObj;
-			} else
-				throw new IllegalArgumentException("Invalid value for " + fieldClass.getName());
-		}
-
-		throw new IllegalArgumentException("Cant convert " + value.getClass() + " to " + fieldClass);
-
-	}
-
-	private static void setField(PropertyInfo fi, Object object, Object value) {
-		try {
-			Field f = fi.field;
-
-			if (value != null) {
-				Class<?> fieldClass = f.getType();
-
-				if (fieldClass == Integer.TYPE)
-					f.setInt(object, ((Number)NumberConverter.INSTANCE.bsonToJava(Integer.class, value)).intValue());
-				else if (fieldClass == Long.TYPE)
-					f.setLong(object, ((Number)NumberConverter.INSTANCE.bsonToJava(Long.class, value)).longValue());
-				else if (fieldClass == Byte.TYPE)
-					f.setByte(object, ((Number)NumberConverter.INSTANCE.bsonToJava(Byte.class, value)).byteValue());
-				else if (fieldClass == Short.TYPE)
-					f.setShort(object, ((Number)NumberConverter.INSTANCE.bsonToJava(Short.class, value)).shortValue());
-				else if (fieldClass == Double.TYPE)
-					f.setDouble(object, ((Number)NumberConverter.INSTANCE.bsonToJava(Double.class, value)).doubleValue());
-				else if (fieldClass == Float.TYPE)
-					f.setFloat(object, ((Number)NumberConverter.INSTANCE.bsonToJava(Float.class, value)).byteValue());
-				else if (fieldClass == Boolean.TYPE)
-					f.setBoolean(object, ((Boolean)PassThruConverter.INSTANCE.bsonToJava(Boolean.class, value)).booleanValue());
-				else if (fieldClass == Character.TYPE)
-					f.setChar(object, value.toString().charAt(0)); // certo?
-				else if (fi.type == Type.ARRAY) {
-					f.set(object, arrayBsonToJava(fi.cls, fi.itemCls, value));
-				} else
-					f.set(object, bsonToJava(fieldClass, value, f.get(object)));
-
-			} else {
-				setNull(f, object);
-			}
-		} catch (IllegalAccessException e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	private static void setNull(Field f, Object object) throws IllegalArgumentException, IllegalAccessException {
-		Class<?> fieldClass = f.getType();
-		if (fieldClass == Integer.TYPE)
-			f.setInt(object, 0);
-		else if (fieldClass == Long.TYPE)
-			f.setLong(object, 0l);
-		else if (fieldClass == Byte.TYPE)
-			f.setByte(object, (byte)0);
-		else if (fieldClass == Short.TYPE)
-			f.setShort(object, (short)0);
-		else if (fieldClass == Double.TYPE)
-			f.setDouble(object, 0);
-		else if (fieldClass == Float.TYPE)
-			f.setFloat(object, 0);
-		else if (fieldClass == Boolean.TYPE)
-			f.setBoolean(object, false);
-		else if (fieldClass == Character.TYPE)
-			f.setChar(object, (char)0);
-		else
-			f.set(object, null);
-	}
-
-	static Object javaToBson(Class<?> fieldClass, Object value, Object previous) {
-
-		if (fieldClass == Integer.TYPE)
-			return NumberConverter.INSTANCE.javaToBson(Integer.class, value);
-		if (fieldClass == Long.TYPE)
-			return NumberConverter.INSTANCE.javaToBson(Long.class, value);
-		if (fieldClass == Byte.TYPE)
-			return NumberConverter.INSTANCE.javaToBson(Byte.class, value);
-		if (fieldClass == Short.TYPE)
-			return NumberConverter.INSTANCE.javaToBson(Short.class, value);
-		if (fieldClass == Double.TYPE)
-			return NumberConverter.INSTANCE.javaToBson(Double.class, value);
-		if (fieldClass == Float.TYPE)
-			return NumberConverter.INSTANCE.javaToBson(Float.class, value);
-		if (fieldClass == Boolean.TYPE)
-			return PassThruConverter.INSTANCE.javaToBson(Boolean.class, value);
-		if (fieldClass == Character.TYPE)
-			return value.toString().charAt(0); // certo?
-		if (fieldClass == String.class)
-			return value.toString();
-
-		TypeConverter converter = typeConverters.get(fieldClass);
-		if (converter != null) // Tem TypeConverter registrado
-			return converter.javaToBson(fieldClass, value);
-
-		if (fieldClass.isEnum()) // É um enum
-			return ((Enum<?>)value).name();
-
-		TypeInfo typeInfo = getTypeInfo(fieldClass, false);
-		if (typeInfo != null) {
-			MObject subData;
-			if (previous instanceof MObject)
-				subData = (MObject)previous;
-			else
-				subData = new MObject();
-
-			Object subObj = value;
-
-			saveEmbedded(subObj, subData);
-
-			return subData;
-		}
-
-		throw new IllegalArgumentException("Cant convert " + value.getClass() + " to BSON");
-	}
-
-	private static void getField(PropertyInfo prop, Object object, MObject data) {
-		try {
-			Field f = prop.field;
-			String name = prop.name;
-
-			//System.out.println("getField " + f.getType().getSimpleName() + " " + f.getDeclaringClass().getSimpleName() + "." + f.getName());
-
-			Object value = f.get(object);
-
-			if (value != null) {
-				Class<?> fieldClass = f.getType();
-
-				if (prop.type == Type.ARRAY)
-					data.set(name, arrayJavaToBson(prop.cls, prop.itemCls, value));
-				else
-					data.set(name, javaToBson(fieldClass, value, data.get(name)));
-
-			} else {
-				data.remove(name);
-			}
-		} catch (IllegalAccessException e) {
-			throw new RuntimeException(e);
-		}
-	}
-	
-	private static Object arrayBsonToJava(Class<?> cls, Class<?> itemCls, Object value) throws IllegalAccessException {
-		if (!(value instanceof List))
-			throw new IllegalArgumentException();
-
-		@SuppressWarnings("unchecked")
-		List<Object> blist = (List<Object>)value;
-
-		// Trata Array's
-		if (cls.isArray()) {
-
-			if (itemCls == int.class) {
-				int[] array = new int[blist.size()];
-				for (int i = 0; i < array.length; i++)
-					array[i] = ((Integer)bsonToJava(Integer.class, blist.get(i), null)).intValue();
-				return array;
-			} else if (itemCls == short.class) {
-				short[] array = new short[blist.size()];
-				for (int i = 0; i < array.length; i++)
-					array[i] = ((Short)bsonToJava(Short.class, blist.get(i), null)).shortValue();
-				return array;
-			} else if (itemCls == long.class) {
-				long[] array = new long[blist.size()];
-				for (int i = 0; i < array.length; i++)
-					array[i] = ((Long)bsonToJava(Long.class, blist.get(i), null)).longValue();
-				return array;
-			} else if (itemCls == float.class) {
-				float[] array = new float[blist.size()];
-				for (int i = 0; i < array.length; i++)
-					array[i] = ((Float)bsonToJava(Float.class, blist.get(i), null)).floatValue();
-				return array;
-			} else if (itemCls == double.class) {
-				double[] array = new double[blist.size()];
-				for (int i = 0; i < array.length; i++)
-					array[i] = ((Double)bsonToJava(Double.class, blist.get(i), null)).doubleValue();
-				return array;
-			} else if (itemCls == boolean.class) {
-				boolean[] array = new boolean[blist.size()];
-				for (int i = 0; i < array.length; i++)
-					array[i] = ((Boolean)bsonToJava(Boolean.class, blist.get(i), null)).booleanValue();
-				return array;
-			} else if (itemCls == char.class) {
-				char[] array = new char[blist.size()];
-				for (int i = 0; i < array.length; i++)
-					array[i] = ((Character)bsonToJava(Character.class, blist.get(i), null)).charValue();
-				return array;
-			}
-
-			Object[] array = (Object[])Array.newInstance(itemCls, blist.size());
-			for (int i = 0; i < array.length; i++)
-				array[i] = bsonToJava(itemCls, blist.get(i), null);
-			return array;
-		}
-
-		// Trata List 
-		List<Object> list;
-
-		if (cls == ArrayList.class)
-			list = new ArrayList<Object>(blist.size());
-		else if (cls == LinkedList.class)
-			list = new LinkedList<Object>();
-		else if (cls == Vector.class)
-			list = new Vector<Object>();
-		else
-			throw new IllegalArgumentException();
-
-		for (Object obj: blist)
-			list.add(bsonToJava(itemCls, obj, null));
-
-		return list;
-	}
-
-	private static Object arrayJavaToBson(Class<?> cls, Class<?> itemCls, Object value) {
-		if (value.getClass().isArray()) {
-			MList mlist = new MList();
-
-			if (itemCls == int.class) {
-				int[] array = (int[])value;
-				for (int item: array)
-					mlist.add(item);
-			} else if (itemCls == long.class) {
-				long[] array = (long[])value;
-				for (long item: array)
-					mlist.add(item);
-			} else {
-				Object[] array = (Object[])value;
-				for (Object item: array)
-					mlist.add(javaToBson(itemCls, item, null));
-			}
-
-			return mlist;
-		}
-
-		if (!(value instanceof Collection<?>))
-			throw new IllegalArgumentException();
-
-		MList blist = new MList();
-
-		Collection<?> coll = (Collection<?>)value;
-		for (Object item: coll)
-			blist.add(javaToBson(itemCls, item, null));
-
-		return blist;
 	}
 
 }

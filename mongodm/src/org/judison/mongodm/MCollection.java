@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, Judison Oliveira Gil Filho <judison@gmail.com>
+ * Copyright (c) 2012-2014, Judison Oliveira Gil Filho <judison@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -27,10 +27,13 @@
  */
 package org.judison.mongodm;
 
+import java.util.ArrayList;
 import java.util.List;
 
+import com.mongodb.CommandResult;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
+import com.mongodb.DBObject;
 import com.mongodb.MongoException;
 import com.mongodb.WriteResult;
 
@@ -58,191 +61,145 @@ public class MCollection<T> {
 			}
 		if (entityName == null)
 			entityName = typeInfo.entityName;
-		long t = System.nanoTime();
 		this.coll = mdb.getMongoDB().getCollection(entityName);
-		this.coll.setDBDecoderFactory(MObject.DB_DECODER_FACTORY);
+		this.coll.setDBDecoderFactory(MDecoder.FACTORY);
 
 		if (typeInfo != null)
 			for (IndexInfo idx: typeInfo.indexes)
 				try {
-					coll.ensureIndex(idx.keys, idx.options);
+					//coll.ensureIndex(idx.keys, idx.options);
+					coll.createIndex(idx.keys, idx.options);
 				} catch (MongoException e) {
 					throw new MException(e);
 				}
-		mdb.timerTotal += System.nanoTime() - t;
 	}
 
 	public T load(Object id) throws MException {
-		long t = System.nanoTime();
 		try {
 			MObject data = (MObject)coll.findOne(id);
 			return mapLoad(data);
 		} catch (MongoException e) {
 			throw new MException(e);
-		} finally {
-			mdb.timerTotal += System.nanoTime() - t;
 		}
 	}
 
 	public T findOne() throws MException {
-		long t = System.nanoTime();
 		try {
 			MObject data = (MObject)coll.findOne();
 			return mapLoad(data);
 		} catch (MongoException e) {
 			throw new MException(e);
-		} finally {
-			mdb.timerTotal += System.nanoTime() - t;
 		}
 	}
 
 	public T findOne(MObject query) throws MException {
-		long t = System.nanoTime();
 		try {
 			MObject data = (MObject)coll.findOne(query);
 			return mapLoad(data);
 		} catch (MongoException e) {
 			throw new MException(e);
-		} finally {
-			mdb.timerTotal += System.nanoTime() - t;
 		}
 	}
 
 	public T findOne(Query query) throws MException {
-		long t = System.nanoTime();
 		try {
 			MObject data = (MObject)coll.findOne(query.toMObject());
 			return mapLoad(data);
 		} catch (MongoException e) {
 			throw new MException(e);
-		} finally {
-			mdb.timerTotal += System.nanoTime() - t;
 		}
 	}
 
 	public MCursor<T> find() throws MException {
-		long t = System.nanoTime();
 		try {
 			DBCursor cursor = coll.find();
 			return new MCursor<T>(this, cls, cursor, false);
 		} catch (MongoException e) {
 			throw new MException(e);
-		} finally {
-			mdb.timerTotal += System.nanoTime() - t;
 		}
 	}
 
 	public MCursor<T> find(MObject query) throws MException {
-		long t = System.nanoTime();
 		try {
 			DBCursor cursor = coll.find(query);
 			return new MCursor<T>(this, cls, cursor, false);
 		} catch (MongoException e) {
 			throw new MException(e);
-		} finally {
-			mdb.timerTotal += System.nanoTime() - t;
 		}
 	}
 
 	public MCursor<T> find(Query query) throws MException {
-		long t = System.nanoTime();
 		try {
 			DBCursor cursor = coll.find(query.toMObject());
 			return new MCursor<T>(this, cls, cursor, false);
 		} catch (MongoException e) {
 			throw new MException(e);
-		} finally {
-			mdb.timerTotal += System.nanoTime() - t;
 		}
 	}
 
 	public MCursor<MObject> find(MObject query, MObject projection) throws MException {
-		long t = System.nanoTime();
 		try {
 			DBCursor cursor = coll.find(query, projection);
 			return new MCursor<MObject>(this, MObject.class, cursor, true);
 		} catch (MongoException e) {
 			throw new MException(e);
-		} finally {
-			mdb.timerTotal += System.nanoTime() - t;
 		}
 	}
 
 	public MCursor<MObject> find(Query query, Projection projection) throws MException {
-		long t = System.nanoTime();
 		try {
 			DBCursor cursor = coll.find(query.toMObject(), projection.toMObject());
 			return new MCursor<MObject>(this, MObject.class, cursor, true);
 		} catch (MongoException e) {
 			throw new MException(e);
-		} finally {
-			mdb.timerTotal += System.nanoTime() - t;
 		}
 	}
 
-	/*
 	@SuppressWarnings("unchecked")
 	public List<MObject> aggregate(Pipeline pipeline) throws MException {
 		try {
 			MObject cmd = new MObject("aggregate", coll.getName());
 			cmd.put("pipeline", pipeline.getOperators());
-			
-			
-			
 			CommandResult res = mdb.getMongoDB().command(cmd);
 			MongoException e = res.getException();
 			if (e != null)
 				throw new MException(e);
 
-			Object result = res.get("result");
-			return (List<MObject>)result;
+			// TODO isso eh gambi, tem q fazer com MDecoder no cmd
+			List<DBObject> result = (List<DBObject>)res.get("result");
+
+			List<MObject> list = new ArrayList<MObject>();
+			for (DBObject dbo: result)
+				if (dbo instanceof MObject)
+					list.add((MObject)dbo);
+				else
+					list.add(new MObject(dbo));
+			return list;
 		} catch (MongoException e) {
 			throw new MException(e);
 		}
 	}
-	*/
-
-	@SuppressWarnings("unchecked")
-	public List<MObject> aggregate(Pipeline pipeline) throws MException {
-		MObject cmd = new MObject("aggregate", coll.getName());
-		cmd.set("pipeline", pipeline.getOperators());
-		return (List<MObject>)mdb.command(cmd); // aqui tem timer
-	}
 
 	private void checkResult(WriteResult res) throws MException {
+		@SuppressWarnings("deprecation") //TODO verificar
 		String error = res.getError();
 		if (error != null)
 			throw new MException(error);
 	}
 
 	public void save(T object) throws MException {
-		long t = System.nanoTime();
 		try {
-			if (cls == MObject.class) {
-				MObject data = (MObject)object;
-				WriteResult res = coll.save(data);
-				String error = res.getError();
-				if (error != null)
-					throw new MException(error);
-			} else {
-				MObject data = mdb.getLoadedData(object);
-				if (data == null)
-					data = new MObject();
+			MObject data;
+			if (cls == MObject.class)
+				data = (MObject)object;
+			else
+				data = (MObject)Mapper.javaToBson(object);
 
-				Mapper.saveEntity(object, data);
+			WriteResult res = coll.save(data);
+			checkResult(res);
 
-				WriteResult res = coll.save(data);
-
-				checkResult(res);
-
-				Mapper.load(object, data);
-
-				mdb.putLoadedData(object, data);
-			}
 		} catch (MongoException e) {
 			throw new MException(e);
-		} finally {
-			mdb.timerTotal += System.nanoTime() - t;
 		}
 	}
 
@@ -259,71 +216,38 @@ public class MCollection<T> {
 	}
 
 	public int update(MObject query, MObject update, boolean upsert, boolean multi) throws MException {
-		long t = System.nanoTime();
-		try {
-			WriteResult res = coll.update(query, update, upsert, multi);
-			checkResult(res);
-			return res.getN();
-		} finally {
-			mdb.timerTotal += System.nanoTime() - t;
-		}
+		WriteResult res = coll.update(query, update, upsert, multi);
+		checkResult(res);
+		return res.getN();
 	}
 
 	public void remove(T object) throws MException {
-		long t = System.nanoTime();
-		try {
-			MObject data = new MObject();
-			Mapper.saveEntity(object, data);
-			WriteResult res = coll.remove(new MObject("_id", data.get("_id")));
-			checkResult(res);
-		} finally {
-			mdb.timerTotal += System.nanoTime() - t;
-		}
+		MObject data = (MObject)Mapper.javaToBson(object);
+		WriteResult res = coll.remove(new MObject("_id", data.get("_id")));
+		checkResult(res);
 	}
 
 	public void removeById(Object id) throws MException {
-		long t = System.nanoTime();
-		try {
-			WriteResult res = coll.remove(new MObject("_id", id));
-			checkResult(res);
-		} finally {
-			mdb.timerTotal += System.nanoTime() - t;
-		}
+		WriteResult res = coll.remove(new MObject("_id", id));
+		checkResult(res);
 	}
 
 	public long count() {
-		long t = System.nanoTime();
-		try {
-			return coll.count();
-		} finally {
-			mdb.timerTotal += System.nanoTime() - t;
-		}
+		return coll.count();
 	}
 
 	public long count(Query query) {
-		long t = System.nanoTime();
-		try {
-			return coll.count(query.toMObject());
-		} finally {
-			mdb.timerTotal += System.nanoTime() - t;
-		}
+		return coll.count(query.toMObject());
 	}
 
 	@SuppressWarnings("unchecked")
 	T mapLoad(MObject data) {
 		if (cls == MObject.class)
 			return (T)data;
-		if (data == null)
+		if (data == null) // o bsonToJava faz isso, mas aqui eh mais rapido
 			return null;
 		else
-			try {
-				T object = (T)typeInfo.constructor.newInstance();
-				Mapper.load(object, data);
-				mdb.putLoadedData(object, data);
-				return object;
-			} catch (Throwable e) {
-				throw new MRuntimeException(e);
-			}
+			return Mapper.bsonToJava(cls, null, data);
 	}
 
 	public MDB getMDB() {

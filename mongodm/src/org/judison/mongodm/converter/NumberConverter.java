@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, Judison Oliveira Gil Filho <judison@gmail.com>
+ * Copyright (c) 2012-2014, Judison Oliveira Gil Filho <judison@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -30,72 +30,84 @@ package org.judison.mongodm.converter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
-public final class NumberConverter extends TypeConverter {
+public final class NumberConverter<T extends Number> extends TypeConverter<T> {
 
-	public static final NumberConverter INSTANCE = new NumberConverter();
+	public static final NumberConverter<Integer> INTEGER = new NumberConverter<Integer>(Integer.class);
+	public static final NumberConverter<Long> LONG = new NumberConverter<Long>(Long.class);
+	public static final NumberConverter<Byte> BYTE = new NumberConverter<Byte>(Byte.class);
+	public static final NumberConverter<Short> SHORT = new NumberConverter<Short>(Short.class);
+	public static final NumberConverter<Float> FLOAT = new NumberConverter<Float>(Float.class);
+	public static final NumberConverter<Double> DOUBLE = new NumberConverter<Double>(Double.class);
+	public static final NumberConverter<BigInteger> BIG_INTEGER = new NumberConverter<BigInteger>(BigInteger.class);
+	public static final NumberConverter<BigDecimal> BIG_DECIMAL = new NumberConverter<BigDecimal>(BigDecimal.class);
 
-	private NumberConverter() {}
+	private final Class<? extends Number> cls;
 
+	private NumberConverter(Class<T> cls) {
+		this.cls = cls;
+	}
+
+	@SuppressWarnings("unchecked")
 	@Override
-	public Object bsonToJava(java.lang.Class<?> cls, Object bsonValue) {
+	public T bsonToJava(Object bsonValue) {
 		if (cls == Integer.class) {
 			if (bsonValue instanceof Integer)
-				return bsonValue;
+				return (T)bsonValue;
 			if (bsonValue instanceof Number)
-				return Integer.valueOf(((Number)bsonValue).intValue());
-			return Integer.valueOf(bsonValue.toString());
+				return (T)Integer.valueOf(((Number)bsonValue).intValue());
+			return (T)Integer.valueOf(bsonValue.toString());
 		} else if (cls == Long.class) {
 			if (bsonValue instanceof Long)
-				return bsonValue;
+				return (T)bsonValue;
 			if (bsonValue instanceof Number)
-				return Long.valueOf(((Number)bsonValue).longValue());
-			return Long.valueOf(bsonValue.toString());
+				return (T)Long.valueOf(((Number)bsonValue).longValue());
+			return (T)Long.valueOf(bsonValue.toString());
 		} else if (cls == Byte.class) {
 			if (bsonValue instanceof Byte)
-				return bsonValue;
+				return (T)bsonValue;
 			if (bsonValue instanceof Number)
-				return Byte.valueOf(((Number)bsonValue).byteValue());
-			return Byte.valueOf(bsonValue.toString());
+				return (T)Byte.valueOf(((Number)bsonValue).byteValue());
+			return (T)Byte.valueOf(bsonValue.toString());
 		} else if (cls == Short.class) {
 			if (bsonValue instanceof Short)
-				return bsonValue;
+				return (T)bsonValue;
 			if (bsonValue instanceof Number)
-				return Short.valueOf(((Number)bsonValue).shortValue());
-			return Short.valueOf(bsonValue.toString());
+				return (T)Short.valueOf(((Number)bsonValue).shortValue());
+			return (T)Short.valueOf(bsonValue.toString());
 		} else if (cls == Float.class) {
 			if (bsonValue instanceof Float)
-				return bsonValue;
+				return (T)bsonValue;
 			if (bsonValue instanceof Number)
-				return Float.valueOf(((Number)bsonValue).floatValue());
-			return Float.valueOf(bsonValue.toString());
+				return (T)Float.valueOf(((Number)bsonValue).floatValue());
+			return (T)Float.valueOf(bsonValue.toString());
 		} else if (cls == Double.class) {
 			if (bsonValue instanceof Double)
-				return bsonValue;
+				return (T)bsonValue;
 			if (bsonValue instanceof Number)
-				return Double.valueOf(((Number)bsonValue).doubleValue());
-			return Double.valueOf(bsonValue.toString());
+				return (T)Double.valueOf(((Number)bsonValue).doubleValue());
+			return (T)Double.valueOf(bsonValue.toString());
 		} else if (cls == BigInteger.class) {
 			if (bsonValue instanceof BigInteger)
-				return bsonValue;
+				return (T)bsonValue;
 			if (bsonValue instanceof BigDecimal)
-				return ((BigDecimal)bsonValue).toBigInteger();
+				return (T)((BigDecimal)bsonValue).toBigInteger();
 			if (bsonValue instanceof Number)
-				return BigInteger.valueOf(((Number)bsonValue).longValue());
-			return new BigInteger(bsonValue.toString());
+				return (T)BigInteger.valueOf(((Number)bsonValue).longValue());
+			return (T)new BigInteger(bsonValue.toString());
 		} else if (cls == BigDecimal.class) {
 			if (bsonValue instanceof BigDecimal)
-				return bsonValue;
+				return (T)bsonValue;
 			if (bsonValue instanceof BigInteger)
-				return new BigDecimal((BigInteger)bsonValue);
+				return (T)new BigDecimal((BigInteger)bsonValue);
 			if (bsonValue instanceof Number)
-				return BigDecimal.valueOf(((Number)bsonValue).doubleValue());
-			return new BigDecimal(bsonValue.toString());
+				return (T)BigDecimal.valueOf(((Number)bsonValue).doubleValue());
+			return (T)new BigDecimal(bsonValue.toString());
 		}
 		throw new IllegalArgumentException();
 	}
 
 	@Override
-	public Object javaToBson(Class<?> cls, Object javaValue) {
+	public Object javaToBson(T javaValue) {
 		if (cls == Integer.class || cls == Short.class || cls == Byte.class) {
 			if (javaValue instanceof Integer)
 				return javaValue;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, Judison Oliveira Gil Filho <judison@gmail.com>
+ * Copyright (c) 2012-2014, Judison Oliveira Gil Filho <judison@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -30,24 +30,22 @@ package org.judison.mongodm.converter;
 import org.judison.mongodm.LatLng;
 import org.judison.mongodm.MObject;
 
-public final class LatLngConverter extends TypeConverter {
+public final class LatLngConverter extends TypeConverter<LatLng> {
 
 	public static final LatLngConverter INSTANCE = new LatLngConverter();
 
 	private LatLngConverter() {}
 
 	@Override
-	public Object bsonToJava(java.lang.Class<?> cls, Object bsonValue) {
-		if (cls == LatLng.class && bsonValue instanceof MObject)
+	public LatLng bsonToJava(Object bsonValue) {
+		if (bsonValue instanceof MObject)
 			return new LatLng((MObject)bsonValue);
 		throw new IllegalArgumentException();
 	}
 
 	@Override
-	public Object javaToBson(Class<?> cls, Object javaValue) {
-		if (cls == LatLng.class && javaValue instanceof LatLng)
-			return ((LatLng)javaValue).toMObject();
-		throw new IllegalArgumentException();
+	public Object javaToBson(LatLng javaValue) {
+		return javaValue.toMObject();
 	}
-
+	
 }

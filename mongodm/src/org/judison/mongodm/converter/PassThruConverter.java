@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, Judison Oliveira Gil Filho <judison@gmail.com>
+ * Copyright (c) 2012-2014, Judison Oliveira Gil Filho <judison@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -27,48 +27,42 @@
  */
 package org.judison.mongodm.converter;
 
+import java.util.Date;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
 import org.bson.types.ObjectId;
+import org.judison.mongodm.MObject;
 
-public final class PassThruConverter extends TypeConverter {
+public final class PassThruConverter<T> extends TypeConverter<T> {
 
-	public static final PassThruConverter INSTANCE = new PassThruConverter();
+	public static final PassThruConverter<Object> INSTANCE = new PassThruConverter<Object>();
 
 	public static final Class<?>[] CLASSES = {
 		String.class,
 		ObjectId.class,
 		Character.class,
+		Character.TYPE,
+		Boolean.class,
+		Boolean.TYPE,
 		UUID.class,
 		byte[].class,
 		Pattern.class,
-		Boolean.class,
+		Date.class,
+		MObject.class,
 	};
-
-	private static boolean supports(Class<?> cls) {
-		for (Class<?> kc: CLASSES)
-			if (kc.equals(cls))
-				return true;
-		return false;
-	}
 
 	private PassThruConverter() {}
 
+	@SuppressWarnings("unchecked")
 	@Override
-	public Object bsonToJava(java.lang.Class<?> javaClass, Object bsonValue) {
-		if (supports(bsonValue.getClass()))
-			return bsonValue;
-		else
-			throw new IllegalArgumentException(bsonValue.getClass().getName());
+	public T bsonToJava(Object bsonValue) {
+		return (T)bsonValue;
 	}
 
 	@Override
-	public Object javaToBson(Class<?> javaClass, Object javaValue) {
-		if (supports(javaValue.getClass()))
-			return javaValue;
-		else
-			throw new IllegalArgumentException();
+	public Object javaToBson(T javaValue) {
+		return javaValue;
 	}
 
 }

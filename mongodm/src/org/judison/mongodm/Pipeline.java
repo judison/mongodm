@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Judison Oliveira Gil Filho <judison@gmail.com>
+ * Copyright (c) 2013-2014, Judison Oliveira Gil Filho <judison@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -26,7 +26,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 package org.judison.mongodm;
-
 
 public class Pipeline {
 
