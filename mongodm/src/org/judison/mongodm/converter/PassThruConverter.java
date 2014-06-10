@@ -43,6 +43,7 @@ public final class PassThruConverter extends TypeConverter {
 		UUID.class,
 		byte[].class,
 		Pattern.class,
+		Boolean.class,
 	};
 
 	private static boolean supports(Class<?> cls) {
@@ -59,7 +60,7 @@ public final class PassThruConverter extends TypeConverter {
 		if (supports(bsonValue.getClass()))
 			return bsonValue;
 		else
-			throw new IllegalArgumentException();
+			throw new IllegalArgumentException(bsonValue.getClass().getName());
 	}
 
 	@Override
