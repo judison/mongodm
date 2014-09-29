@@ -176,6 +176,26 @@ public class Query {
 	public Query notExists(String prop) {
 		return filter(prop, Operator.EXISTS, Boolean.FALSE);
 	}
+	
+	public Query or(Query... queries) {
+		if (queries == null || queries.length < 2)
+			throw new IllegalArgumentException("Must have at least 2 sub queries");
+		MList group = new MList();
+		for (Query query: queries)
+			group.add(query.toMObject());
+		filter("$or", Operator.EQUAL, group);
+		return this;
+	}
+	
+	public Query and(Query... queries) {
+		if (queries == null || queries.length < 2)
+			throw new IllegalArgumentException("Must have at least 2 sub queries");
+		MList group = new MList();
+		for (Query query: queries)
+			group.add(query.toMObject());
+		filter("$and", Operator.EQUAL, group);
+		return this;
+	}
 
 	public MObject toMObject() {
 		return conds;
