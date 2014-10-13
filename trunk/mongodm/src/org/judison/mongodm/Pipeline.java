@@ -108,5 +108,11 @@ public class Pipeline {
 	public MList getOperators() {
 		return operators;
 	}
+	
+	@Override
+	public String toString() {
+		return operators.toString();
+	}
+	
 
 }

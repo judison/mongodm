@@ -177,6 +177,20 @@ public class Query {
 		return filter(prop, Operator.EXISTS, Boolean.FALSE);
 	}
 	
+	public Query in(String prop, Object... values) {
+		MList list = new MList();
+		for (Object value: values)
+			list.add(value);
+		return filter(prop, Operator.IN, list);
+	}
+	
+	public Query notIn(String prop, Object... values) {
+		MList list = new MList();
+		for (Object value: values)
+			list.add(value);
+		return filter(prop, Operator.NOT_IN, list);
+	}
+	
 	public Query or(Query... queries) {
 		if (queries == null || queries.length < 2)
 			throw new IllegalArgumentException("Must have at least 2 sub queries");
