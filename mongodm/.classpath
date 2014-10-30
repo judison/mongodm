@@ -12,6 +12,6 @@
 			<attribute name="owner.project.facets" value="java"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="libs/mongo-2.12.4.jar" sourcepath="libs/mongo-src-2.12.4.zip"/>
+	<classpathentry exported="true" kind="lib" path="libs/mongo-2.12.4.jar" sourcepath="libs/mongo-src-2.12.4.zip"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
