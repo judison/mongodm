@@ -48,6 +48,7 @@ public class MCollection<T> {
 		this(mdb, cls, null);
 	}
 
+	@SuppressWarnings("deprecation")
 	public MCollection(MDB mdb, Class<T> cls, String entityName) throws MException {
 		this.mdb = mdb;
 		this.cls = cls;
@@ -67,8 +68,7 @@ public class MCollection<T> {
 		if (typeInfo != null)
 			for (IndexInfo idx: typeInfo.indexes)
 				try {
-					//coll.ensureIndex(idx.keys, idx.options);
-					coll.createIndex(idx.keys, idx.options);
+					coll.ensureIndex(idx.keys, idx.options);
 				} catch (MongoException e) {
 					throw new MException(e);
 				}
