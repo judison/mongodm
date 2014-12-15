@@ -30,7 +30,6 @@ package org.judison.mongodm;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.mongodb.CommandResult;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
@@ -49,7 +48,8 @@ public class MCollection<T> {
 	}
 
 	@SuppressWarnings("deprecation")
-	public MCollection(MDB mdb, Class<T> cls, String entityName) throws MException {
+	public MCollection(MDB mdb, Class<T> cls, String entityName)
+			throws MException {
 		this.mdb = mdb;
 		this.cls = cls;
 		if (cls == MObject.class)
@@ -66,7 +66,7 @@ public class MCollection<T> {
 		this.coll.setDBDecoderFactory(MDecoder.FACTORY);
 
 		if (typeInfo != null)
-			for (IndexInfo idx: typeInfo.indexes)
+			for (IndexInfo idx : typeInfo.indexes)
 				try {
 					coll.ensureIndex(idx.keys, idx.options);
 				} catch (MongoException e) {
@@ -76,7 +76,7 @@ public class MCollection<T> {
 
 	public T load(Object id) throws MException {
 		try {
-			MObject data = (MObject)coll.findOne(id);
+			MObject data = (MObject) coll.findOne(id);
 			return mapLoad(data);
 		} catch (MongoException e) {
 			throw new MException(e);
@@ -85,7 +85,7 @@ public class MCollection<T> {
 
 	public T findOne() throws MException {
 		try {
-			MObject data = (MObject)coll.findOne();
+			MObject data = (MObject) coll.findOne();
 			return mapLoad(data);
 		} catch (MongoException e) {
 			throw new MException(e);
@@ -94,7 +94,7 @@ public class MCollection<T> {
 
 	public T findOne(MObject query) throws MException {
 		try {
-			MObject data = (MObject)coll.findOne(query);
+			MObject data = (MObject) coll.findOne(query);
 			return mapLoad(data);
 		} catch (MongoException e) {
 			throw new MException(e);
@@ -103,7 +103,7 @@ public class MCollection<T> {
 
 	public T findOne(Query query) throws MException {
 		try {
-			MObject data = (MObject)coll.findOne(query.toMObject());
+			MObject data = (MObject) coll.findOne(query.toMObject());
 			return mapLoad(data);
 		} catch (MongoException e) {
 			throw new MException(e);
@@ -137,7 +137,8 @@ public class MCollection<T> {
 		}
 	}
 
-	public MCursor<MObject> find(MObject query, MObject projection) throws MException {
+	public MCursor<MObject> find(MObject query, MObject projection)
+			throws MException {
 		try {
 			DBCursor cursor = coll.find(query, projection);
 			return new MCursor<MObject>(this, MObject.class, cursor, true);
@@ -146,9 +147,11 @@ public class MCollection<T> {
 		}
 	}
 
-	public MCursor<MObject> find(Query query, Projection projection) throws MException {
+	public MCursor<MObject> find(Query query, Projection projection)
+			throws MException {
 		try {
-			DBCursor cursor = coll.find(query.toMObject(), projection.toMObject());
+			DBCursor cursor = coll.find(query.toMObject(),
+					projection.toMObject());
 			return new MCursor<MObject>(this, MObject.class, cursor, true);
 		} catch (MongoException e) {
 			throw new MException(e);
@@ -160,28 +163,30 @@ public class MCollection<T> {
 		try {
 			MObject cmd = new MObject("aggregate", coll.getName());
 			cmd.put("pipeline", pipeline.getOperators());
-			CommandResult res = mdb.getMongoDB().command(cmd);
-			MongoException e = res.getException();
-			if (e != null)
-				throw new MException(e);
 
-			// TODO isso eh gambi, tem q fazer com MDecoder no cmd
-			List<DBObject> result = (List<DBObject>)res.get("result");
+			Object res = mdb.command(cmd);
 
-			List<MObject> list = new ArrayList<MObject>();
-			for (DBObject dbo: result)
-				if (dbo instanceof MObject)
-					list.add((MObject)dbo);
-				else
-					list.add(new MObject(dbo));
-			return list;
+			if (res instanceof List) {
+				// TODO isso eh gambi, tem q fazer com MDecoder no cmd
+				List<DBObject> result = (List<DBObject>) res;
+
+				List<MObject> list = new ArrayList<MObject>();
+				for (DBObject dbo : result)
+					if (dbo instanceof MObject)
+						list.add((MObject) dbo);
+					else
+						list.add(new MObject(dbo));
+				return list;
+			} else
+				throw new MException("Unknow response "+res.getClass().toString());
 		} catch (MongoException e) {
 			throw new MException(e);
 		}
 	}
 
 	private void checkResult(WriteResult res) throws MException {
-		@SuppressWarnings("deprecation") //TODO verificar
+		@SuppressWarnings("deprecation")
+		// TODO verificar
 		String error = res.getError();
 		if (error != null)
 			throw new MException(error);
@@ -191,9 +196,9 @@ public class MCollection<T> {
 		try {
 			MObject data;
 			if (cls == MObject.class)
-				data = (MObject)object;
+				data = (MObject) object;
 			else
-				data = (MObject)Mapper.javaToBson(object);
+				data = (MObject) Mapper.javaToBson(object);
 
 			WriteResult res = coll.save(data);
 			checkResult(res);
@@ -207,7 +212,8 @@ public class MCollection<T> {
 		return update(query.toMObject(), update.toMObject(), false, false);
 	}
 
-	public int update(Query query, Update update, boolean upsert, boolean multi) throws MException {
+	public int update(Query query, Update update, boolean upsert, boolean multi)
+			throws MException {
 		return update(query.toMObject(), update.toMObject(), upsert, multi);
 	}
 
@@ -215,14 +221,15 @@ public class MCollection<T> {
 		return update(query, update, false, false);
 	}
 
-	public int update(MObject query, MObject update, boolean upsert, boolean multi) throws MException {
+	public int update(MObject query, MObject update, boolean upsert,
+			boolean multi) throws MException {
 		WriteResult res = coll.update(query, update, upsert, multi);
 		checkResult(res);
 		return res.getN();
 	}
 
 	public void remove(T object) throws MException {
-		MObject data = (MObject)Mapper.javaToBson(object);
+		MObject data = (MObject) Mapper.javaToBson(object);
 		WriteResult res = coll.remove(new MObject("_id", data.get("_id")));
 		checkResult(res);
 	}
@@ -243,7 +250,7 @@ public class MCollection<T> {
 	@SuppressWarnings("unchecked")
 	T mapLoad(MObject data) {
 		if (cls == MObject.class)
-			return (T)data;
+			return (T) data;
 		if (data == null) // o bsonToJava faz isso, mas aqui eh mais rapido
 			return null;
 		else
