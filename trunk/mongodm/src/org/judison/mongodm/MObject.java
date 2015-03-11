@@ -27,8 +27,10 @@
  */
 package org.judison.mongodm;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.Map.Entry;
@@ -50,9 +52,11 @@ import com.mongodb.util.JSON;
 public class MObject implements DBObject, BSONObject {
 
 	public static MObject parseJSON(String str) {
-		return (MObject)JSON.parse(str, MDecoder.FACTORY.create().getDBCallback(null));
+		return (MObject) JSON.parse(str, MDecoder.FACTORY.create()
+				.getDBCallback(null));
 	}
 
+	private Mapper mapper;
 	private Object obj;
 
 	private LinkedHashMap<String, Object> map;
@@ -71,10 +75,11 @@ public class MObject implements DBObject, BSONObject {
 		putAll(other);
 	}
 
-	MObject(TypeInfo typeInfo, Object obj) {
+	MObject(TypeInfo typeInfo, Mapper mapper, Object obj) {
 		this(true);
 		this.obj = obj;
-		for (PropertyInfo pi: typeInfo.properties)
+		this.mapper = mapper;
+		for (PropertyInfo pi : typeInfo.properties)
 			map.put(pi.name, pi);
 	}
 
@@ -83,14 +88,38 @@ public class MObject implements DBObject, BSONObject {
 			map = new LinkedHashMap<String, Object>();
 	}
 
-	void mapToObject(TypeInfo typeInfo, Object obj) {
+	void mapToObject(TypeInfo typeInfo, Mapper mapper, Object obj) {
 		if (this.obj != null)
 			throw new IllegalStateException("MObject already mapped");
 		this.obj = obj;
+		this.mapper = mapper;
 
-		for (PropertyInfo pi: typeInfo.properties) {
+		for (PropertyInfo pi : typeInfo.properties) {
 			Object bsonValue = map.put(pi.name, pi);
-			setField(pi, obj, bsonValue);
+			setField(pi, obj, mapper, bsonValue);
+		}
+	}
+
+	void unmap() {
+		if (this.obj == null)
+			return;
+		synchronized (map) {
+			List<String> props = new ArrayList<String>(map.keySet());
+			for (String name : props) {
+				Object value = map.get(name);
+				
+				if (value instanceof PropertyInfo) 
+					try {
+						PropertyInfo pi = (PropertyInfo) value;
+						value = getField(pi, obj, mapper);
+						map.put(name, value);
+					} catch (Throwable e) {
+						e.printStackTrace(); //TODO melhorar
+						map.remove(name);
+					}
+			}
+			this.obj = null;
+			this.mapper = null;
 		}
 	}
 
@@ -133,12 +162,14 @@ public class MObject implements DBObject, BSONObject {
 			return;
 		if (value instanceof byte[])
 			return;
-		if (value instanceof BSONTimestamp || value instanceof Symbol || value instanceof Code || value instanceof CodeWScope)
+		if (value instanceof BSONTimestamp || value instanceof Symbol
+				|| value instanceof Code || value instanceof CodeWScope)
 			return;
 
-		throw new IllegalArgumentException(getClass().getSimpleName() + " can't store a " + value.getClass().getName());
+		throw new IllegalArgumentException(getClass().getSimpleName()
+				+ " can't store a " + value.getClass().getName());
 	}
-	
+
 	@Override
 	public Object put(String name, Object value) {
 		checkValue(value);
@@ -146,9 +177,9 @@ public class MObject implements DBObject, BSONObject {
 			Object old = map.get(name);
 			if (old instanceof PropertyInfo)
 				try {
-					PropertyInfo pi = (PropertyInfo)old;
-					old = getField(pi, obj);
-					setField(pi, obj, value);
+					PropertyInfo pi = (PropertyInfo) old;
+					old = getField(pi, obj, mapper);
+					setField(pi, obj, mapper, value);
 
 					return old;
 				} catch (Throwable e) {
@@ -161,15 +192,15 @@ public class MObject implements DBObject, BSONObject {
 
 	@Override
 	public void putAll(BSONObject o) {
-		for (String name: o.keySet())
+		for (String name : o.keySet())
 			put(name, o.get(name));
 	}
 
 	@SuppressWarnings("rawtypes")
 	@Override
 	public void putAll(Map m) {
-		for (Object o: m.entrySet()) {
-			Entry e = (Entry)o;
+		for (Object o : m.entrySet()) {
+			Entry e = (Entry) o;
 			put(String.valueOf(e.getKey()), e.getValue());
 		}
 	}
@@ -180,8 +211,8 @@ public class MObject implements DBObject, BSONObject {
 			Object value = map.get(name);
 			if (value instanceof PropertyInfo)
 				try {
-					PropertyInfo pi = (PropertyInfo)value;
-					value = getField(pi, obj);
+					PropertyInfo pi = (PropertyInfo) value;
+					value = getField(pi, obj, mapper);
 					return value;
 				} catch (Throwable e) {
 					throw new RuntimeException(e);
@@ -196,13 +227,13 @@ public class MObject implements DBObject, BSONObject {
 	public Map toMap() {
 		synchronized (map) {
 			Map<String, Object> resp = new LinkedHashMap<String, Object>();
-			for (Entry<String, Object> e: map.entrySet()) {
+			for (Entry<String, Object> e : map.entrySet()) {
 				String name = e.getKey();
 				Object value = map.get(name);
 				if (value instanceof PropertyInfo)
 					try {
-						PropertyInfo pi = (PropertyInfo)value;
-						value = getField(pi, obj);
+						PropertyInfo pi = (PropertyInfo) value;
+						value = getField(pi, obj, mapper);
 					} catch (Throwable ex) {
 						throw new RuntimeException(ex);
 					}
@@ -218,9 +249,9 @@ public class MObject implements DBObject, BSONObject {
 			Object value = map.get(name);
 			if (value instanceof PropertyInfo)
 				try {
-					PropertyInfo pi = (PropertyInfo)value;
-					value = getField(pi, obj);
-					setField(pi, obj, null);
+					PropertyInfo pi = (PropertyInfo) value;
+					value = getField(pi, obj, mapper);
+					setField(pi, obj, mapper, null);
 					return value;
 				} catch (Throwable e) {
 					throw new RuntimeException(e);
@@ -230,7 +261,7 @@ public class MObject implements DBObject, BSONObject {
 			return value;
 		}
 	}
-	
+
 	@Override
 	@Deprecated
 	public boolean containsKey(String name) {
@@ -264,26 +295,28 @@ public class MObject implements DBObject, BSONObject {
 		return partialObject;
 	}
 
-	private static void setField(PropertyInfo pi, Object object, Object bsonValue) {
+	private static void setField(PropertyInfo pi, Object object, Mapper mapper,
+			Object bsonValue) {
 		try {
-			pi.field.set(object, Mapper.bsonToJava(pi.cls, pi.itemCls, bsonValue));
+			pi.field.set(object,
+					mapper.bsonToJava(pi.cls, pi.itemCls, bsonValue));
 		} catch (IllegalAccessException e) {
 			throw new RuntimeException(e);
 		}
 	}
 
-	private static Object getField(PropertyInfo pi, Object object) {
+	private static Object getField(PropertyInfo pi, Object object, Mapper mapper) {
 		try {
-			return Mapper.javaToBson(pi.field.get(object), pi);
+			return mapper.javaToBson(pi.field.get(object), pi);
 		} catch (IllegalAccessException e) {
 			throw new RuntimeException(e);
 		}
 	}
-	
-	//==========================
+
+	// ==========================
 	// deep (Dot Notation) Stuff
-	//==========================
-	
+	// ==========================
+
 	public Object deepGet(String name) {
 		int dotIdx = name.indexOf('.');
 		if (dotIdx >= 0) {
@@ -291,7 +324,7 @@ public class MObject implements DBObject, BSONObject {
 			String p1 = name.substring(dotIdx + 1);
 			Object aux = get(p0); // otimizar depois...
 			if (aux instanceof MObject)
-				return ((MObject)aux).deepGet(p1);
+				return ((MObject) aux).deepGet(p1);
 			else
 				return null; // ou aux eh null, ou nao eh um { }, entao...
 		} else
@@ -309,7 +342,7 @@ public class MObject implements DBObject, BSONObject {
 				aux = new MObject();
 				put(p0, aux); // otimizar depois...
 			}
-			((MObject)aux).deepPut(p1, value);
+			((MObject) aux).deepPut(p1, value);
 		} else
 			put(name, value); // otimizar depois...
 	}
@@ -321,7 +354,7 @@ public class MObject implements DBObject, BSONObject {
 			String p1 = name.substring(dotIdx + 1);
 			Object aux = get(p0); // otimizar depois...
 			if (aux instanceof MObject)
-				return ((MObject)aux).deepContainsField(p1);
+				return ((MObject) aux).deepContainsField(p1);
 			else
 				return false; // ou aux eh null, ou nao eh um { }, entao...
 		} else
@@ -335,7 +368,7 @@ public class MObject implements DBObject, BSONObject {
 			String p1 = name.substring(dotIdx + 1);
 			Object aux = get(p0); // otimizar depois...
 			if (aux instanceof MObject)
-				return ((MObject)aux).deepRemove(p1);
+				return ((MObject) aux).deepRemove(p1);
 			else
 				return null; // ou aux eh null, ou nao eh um { }, entao...
 		} else

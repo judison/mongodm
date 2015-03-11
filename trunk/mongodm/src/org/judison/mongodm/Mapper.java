@@ -43,8 +43,6 @@ import org.judison.mongodm.converter.TypeConverter;
 
 public final class Mapper {
 
-	private Mapper() {}
-
 	private static Map<Class<?>, TypeConverter<?>> typeConverters = new HashMap<Class<?>, TypeConverter<?>>();
 
 	public static <T> void registerTypeConverter(Class<T> cls, TypeConverter<T> converter) {
@@ -78,178 +76,7 @@ public final class Mapper {
 			typeConverters.put(cls, PassThruConverter.INSTANCE);
 	}
 
-	public static <T> T bsonToJava(Class<T> cls, Object bsonValue) {
-		return bsonToJava(cls, null, bsonValue);
-	}
-
-	@SuppressWarnings({ "unchecked", "rawtypes" })
-	public static <T> T bsonToJava(Class<T> cls, Class<?> itemCls, Object bsonValue) {
-
-		if (bsonValue == null)
-			if (cls == Integer.TYPE)
-				return (T)Integer.valueOf(0);
-			else if (cls == Long.TYPE)
-				return (T)Long.valueOf(0);
-			else if (cls == Byte.TYPE)
-				return (T)Byte.valueOf((byte)0);
-			else if (cls == Short.TYPE)
-				return (T)Short.valueOf((short)0);
-			else if (cls == Double.TYPE)
-				return (T)Double.valueOf(0);
-			else if (cls == Float.TYPE)
-				return (T)Float.valueOf(0);
-			else if (cls == Boolean.TYPE)
-				return (T)Boolean.FALSE;
-			else if (cls == Character.TYPE)
-				return (T)Character.valueOf((char)0);
-			else
-				return null;
-
-		TypeConverter<T> tc = (TypeConverter<T>)typeConverters.get(cls);
-		if (tc != null)
-			return tc.bsonToJava(bsonValue);
-
-		if (cls.isEnum())
-			return (T)Enum.valueOf((Class<? extends Enum>)cls, bsonValue.toString());
-
-		if (cls.isArray() || List.class.isAssignableFrom(cls)) {
-
-			if (bsonValue instanceof MList) {
-				MList mlist = (MList)bsonValue;
-				Object javaObj = mlist.getBackendObject();
-				if (javaObj != null)
-					if (cls.isAssignableFrom(javaObj.getClass()))
-						return (T)javaObj;
-					else
-						throw new IllegalArgumentException("Can't map to " + cls.getName() + ", already mapped to " + javaObj.getClass().getName());
-
-				if (itemCls == null)
-					throw new IllegalArgumentException("Can't map to " + cls.getName() + ", item class unknow");
-
-				// precisa criar o obj...
-				if (cls.isArray())
-					javaObj = Array.newInstance(itemCls, mlist.size());
-				else
-					try {
-						javaObj = cls.newInstance();
-					} catch (Throwable e) {
-						throw new IllegalArgumentException("Can't map to " + bsonValue.getClass().getName(), e);
-					}
-
-				mlist.mapToObject(cls.isArray(), javaObj, itemCls);
-
-				synchronized (mobjects) {
-					mobjects.put(javaObj, mlist);
-				}
-
-				return (T)javaObj;
-			}
-
-			throw new IllegalArgumentException("Can't map to " + cls.getName() + ", " + bsonValue.getClass() + " is not a MList");
-
-		}
-
-		if (bsonValue instanceof BSONObject) {
-
-			MObject mobj = null;
-			Object javaObj = null;
-			if (bsonValue instanceof MObject) {
-				mobj = (MObject)bsonValue;
-				javaObj = mobj.getBackendObject();
-				if (javaObj != null)
-					if (cls.isAssignableFrom(javaObj.getClass()))
-						return (T)javaObj;
-					else
-						throw new IllegalArgumentException("Can't map to " + cls.getName() + ", already mapped to " + javaObj.getClass().getName());
-			}
-			BSONObject bsonObject = (BSONObject)bsonValue;
-
-			TypeInfo typeInfo = typeInfos.get(cls);
-			if (typeInfo == null)
-				try {
-					typeInfo = new TypeInfo(cls);
-					typeInfos.put(cls, typeInfo);
-				} catch (Throwable e) {
-					throw new IllegalArgumentException("Can't map to " + cls.getName(), e);
-				}
-
-			try {
-				javaObj = cls.newInstance();
-			} catch (Throwable e) {
-				throw new IllegalArgumentException("Can't map to " + bsonValue.getClass().getName(), e);
-			}
-
-			if (mobj == null) {
-				// to criando um novo MObject, mas o BSONObject q tava la, vai continuar
-				mobj = new MObject(typeInfo, javaObj);
-				mobj.putAll(bsonObject);
-			} else {
-				// faço meu MObject ficar mapeado
-				mobj.mapToObject(typeInfo, javaObj);
-			}
-			synchronized (mobjects) {
-				mobjects.put(javaObj, mobj);
-			}
-
-			return (T)javaObj;
-
-			//--
-		}
-
-		throw new IllegalArgumentException("Can't map " + bsonValue.getClass() + " to " + cls.getName());
-	}
-
-	public static Object javaToBson(Object javaValue) {
-		return javaToBson(javaValue, null);
-	}
-
-	public static Object javaToBson(Object javaValue, PropertyInfo pi) {
-		if (javaValue == null)
-			return null;
-
-		Class<?> cls = javaValue.getClass();
-
-		@SuppressWarnings("unchecked")
-		TypeConverter<Object> tc = (TypeConverter<Object>)typeConverters.get(cls);
-		if (tc != null)
-			return tc.javaToBson(javaValue);
-
-		if (cls.isEnum())
-			return ((Enum<?>)javaValue).name();
-
-		if ((javaValue instanceof List) || cls.isArray())
-			synchronized (mobjects) {
-				MList mlist = (MList)mobjects.get(javaValue);
-				if (mlist == null) {
-					mlist = new MList(cls.isArray(), javaValue, pi == null ? null : pi.itemCls);//TODO nao usar null, se pi == null
-					mobjects.put(javaValue, mlist);
-				}
-				return mlist;
-			}
-
-		if (javaValue instanceof BSONObject)
-			return javaValue;
-
-		TypeInfo typeInfo = typeInfos.get(cls);
-		if (typeInfo == null)
-			try {
-				typeInfo = new TypeInfo(cls);
-				typeInfos.put(cls, typeInfo);
-			} catch (Throwable e) {
-				throw new IllegalArgumentException("Can't map " + cls.getName() + " to MObject", e);
-			}
-
-		synchronized (mobjects) {
-			MObject mobj = mobjects.get(javaValue);
-			if (mobj == null) {
-				mobj = new MObject(typeInfo, javaValue);
-				mobjects.put(javaValue, mobj);
-			}
-			return mobj;
-		}
-	}
-
-	private static WeakHashMap<Object, MObject> mobjects = new WeakHashMap<Object, MObject>();
+	
 
 	//===================================
 
@@ -280,6 +107,191 @@ public final class Mapper {
 		if (info == null) {
 			info = new TypeInfo(cls);
 			typeInfos.put(cls, info);
+		}
+	}
+	
+	//========================================================================
+
+	private WeakHashMap<Object, MObject> mobjects = new WeakHashMap<Object, MObject>();
+
+	Mapper() {}
+	
+	public <T> T bsonToJava(Class<T> cls, Object bsonValue) {
+		return bsonToJava(cls, null, bsonValue);
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	public <T> T bsonToJava(Class<T> cls, Class<?> itemCls, Object bsonValue) {
+	
+		if (bsonValue == null)
+			if (cls == Integer.TYPE)
+				return (T)Integer.valueOf(0);
+			else if (cls == Long.TYPE)
+				return (T)Long.valueOf(0);
+			else if (cls == Byte.TYPE)
+				return (T)Byte.valueOf((byte)0);
+			else if (cls == Short.TYPE)
+				return (T)Short.valueOf((short)0);
+			else if (cls == Double.TYPE)
+				return (T)Double.valueOf(0);
+			else if (cls == Float.TYPE)
+				return (T)Float.valueOf(0);
+			else if (cls == Boolean.TYPE)
+				return (T)Boolean.FALSE;
+			else if (cls == Character.TYPE)
+				return (T)Character.valueOf((char)0);
+			else
+				return null;
+	
+		TypeConverter<T> tc = (TypeConverter<T>)typeConverters.get(cls);
+		if (tc != null)
+			return tc.bsonToJava(bsonValue);
+	
+		if (cls.isEnum())
+			return (T)Enum.valueOf((Class<? extends Enum>)cls, bsonValue.toString());
+	
+		if (cls.isArray() || List.class.isAssignableFrom(cls)) {
+	
+			if (bsonValue instanceof MList) {
+				MList mlist = (MList)bsonValue;
+				Object javaObj = mlist.getBackendObject();
+				if (javaObj != null)
+					if (cls.isAssignableFrom(javaObj.getClass()))
+						return (T)javaObj;
+					else
+						throw new IllegalArgumentException("Can't map to " + cls.getName() + ", already mapped to " + javaObj.getClass().getName());
+	
+				if (itemCls == null)
+					throw new IllegalArgumentException("Can't map to " + cls.getName() + ", item class unknow");
+	
+				// precisa criar o obj...
+				if (cls.isArray())
+					javaObj = Array.newInstance(itemCls, mlist.size());
+				else
+					try {
+						javaObj = cls.newInstance();
+					} catch (Throwable e) {
+						throw new IllegalArgumentException("Can't map to " + bsonValue.getClass().getName(), e);
+					}
+	
+				mlist.mapToObject(cls.isArray(), this, javaObj, itemCls);
+	
+				synchronized (mobjects) {
+					mobjects.put(javaObj, mlist);
+				}
+	
+				return (T)javaObj;
+			}
+	
+			throw new IllegalArgumentException("Can't map to " + cls.getName() + ", " + bsonValue.getClass() + " is not a MList");
+	
+		}
+	
+		if (bsonValue instanceof BSONObject) {
+	
+			MObject mobj = null;
+			Object javaObj = null;
+			if (bsonValue instanceof MObject) {
+				mobj = (MObject)bsonValue;
+				javaObj = mobj.getBackendObject();
+				if (javaObj != null)
+					if (cls.isAssignableFrom(javaObj.getClass()))
+						return (T)javaObj;
+					else
+						throw new IllegalArgumentException("Can't map to " + cls.getName() + ", already mapped to " + javaObj.getClass().getName());
+			}
+			BSONObject bsonObject = (BSONObject)bsonValue;
+	
+			TypeInfo typeInfo = typeInfos.get(cls);
+			if (typeInfo == null)
+				try {
+					typeInfo = new TypeInfo(cls);
+					typeInfos.put(cls, typeInfo);
+				} catch (Throwable e) {
+					throw new IllegalArgumentException("Can't map to " + cls.getName(), e);
+				}
+	
+			try {
+				javaObj = cls.newInstance();
+			} catch (Throwable e) {
+				throw new IllegalArgumentException("Can't map to " + bsonValue.getClass().getName(), e);
+			}
+	
+			if (mobj == null) {
+				// to criando um novo MObject, mas o BSONObject q tava la, vai continuar
+				mobj = new MObject(typeInfo, this, javaObj);
+				mobj.putAll(bsonObject);
+			} else {
+				// faço meu MObject ficar mapeado
+				mobj.mapToObject(typeInfo, this, javaObj);
+			}
+			synchronized (mobjects) {
+				mobjects.put(javaObj, mobj);
+			}
+	
+			return (T)javaObj;
+	
+			//--
+		}
+	
+		throw new IllegalArgumentException("Can't map " + bsonValue.getClass() + " to " + cls.getName());
+	}
+
+	public Object javaToBson(Object javaValue) {
+		return javaToBson(javaValue, null);
+	}
+
+	public Object javaToBson(Object javaValue, PropertyInfo pi) {
+		if (javaValue == null)
+			return null;
+	
+		Class<?> cls = javaValue.getClass();
+	
+		@SuppressWarnings("unchecked")
+		TypeConverter<Object> tc = (TypeConverter<Object>)typeConverters.get(cls);
+		if (tc != null)
+			return tc.javaToBson(javaValue);
+	
+		if (cls.isEnum())
+			return ((Enum<?>)javaValue).name();
+	
+		if ((javaValue instanceof List) || cls.isArray())
+			synchronized (mobjects) {
+				MList mlist = (MList)mobjects.get(javaValue);
+				if (mlist == null) {
+					mlist = new MList(cls.isArray(), javaValue, this, pi == null ? null : pi.itemCls);//TODO nao usar null, se pi == null
+					mobjects.put(javaValue, mlist);
+				}
+				return mlist;
+			}
+	
+		if (javaValue instanceof BSONObject)
+			return javaValue;
+	
+		TypeInfo typeInfo = typeInfos.get(cls);
+		if (typeInfo == null)
+			try {
+				typeInfo = new TypeInfo(cls);
+				typeInfos.put(cls, typeInfo);
+			} catch (Throwable e) {
+				throw new IllegalArgumentException("Can't map " + cls.getName() + " to MObject", e);
+			}
+	
+		synchronized (mobjects) {
+			MObject mobj = mobjects.get(javaValue);
+			if (mobj == null) {
+				mobj = new MObject(typeInfo, this, javaValue);
+				mobjects.put(javaValue, mobj);
+			}
+			return mobj;
+		}
+	}
+	
+	public void unmapAll() {
+		synchronized (mobjects) {
+			for (MObject mobj: mobjects.values())
+				mobj.unmap();
+			mobjects.clear();
 		}
 	}
 

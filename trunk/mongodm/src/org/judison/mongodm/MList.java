@@ -45,17 +45,19 @@ import org.bson.util.StringRangeSet;
 public class MList extends MObject implements List<Object> {
 
 	private boolean backed;
+	private Mapper mapper;
 	private List<Object> list;
 	private Object array;
 	private Class<?> itemCls;
 	private int modCount;
 
 	@SuppressWarnings("unchecked")
-	MList(boolean isArray, Object obj, Class<?> itemCls) {
+	MList(boolean isArray, Object obj, Mapper mapper, Class<?> itemCls) {
 		super(false);
 		backed = true;
 		array = isArray ? obj : null;
 		list = isArray ? null : (List<Object>)obj;
+		this.mapper = mapper;
 		this.itemCls = itemCls;
 	}
 
@@ -64,15 +66,29 @@ public class MList extends MObject implements List<Object> {
 		backed = false;
 		list = new ArrayList<Object>();
 		array = null;
+		this.mapper = null;
 	}
 
 	@Override
-	void mapToObject(TypeInfo typeInfo, Object obj) {
+	void unmap() {
+		int size = size();
+		List<Object> nl = new ArrayList<Object>(size);
+		for (int i = 0; i < size; i++)
+			nl.add(get(i));
+		
+		backed = false;
+		list = nl;
+		array = null;
+		this.mapper = null;
+	}
+	
+	@Override
+	void mapToObject(TypeInfo typeInfo, Mapper mapper, Object obj) {
 		throw new UnsupportedOperationException();
 	}
 
 	@SuppressWarnings("unchecked")
-	void mapToObject(boolean isArray, Object obj, Class<?> itemCls) {
+	void mapToObject(boolean isArray, Mapper mapper, Object obj, Class<?> itemCls) {
 		if (backed)
 			throw new IllegalStateException("MList already mapped");
 
@@ -81,6 +97,7 @@ public class MList extends MObject implements List<Object> {
 		backed = true;
 		array = isArray ? obj : null;
 		list = isArray ? null : (List<Object>)obj;
+		this.mapper = mapper;
 		this.itemCls = itemCls;
 
 		if (isArray)
@@ -118,7 +135,7 @@ public class MList extends MObject implements List<Object> {
 	public boolean add(Object v) {
 		if (list != null)
 			if (backed)
-				list.add(Mapper.bsonToJava(itemCls, null, v)); //ISSUE 1: Allows List<List<ItemClass>>
+				list.add(mapper.bsonToJava(itemCls, null, v)); //ISSUE 1: Allows List<List<ItemClass>>
 			else
 				list.add(v);
 		else
@@ -137,22 +154,22 @@ public class MList extends MObject implements List<Object> {
 						list.add(null);
 					// adiciona o meu item
 					if (backed)
-						list.add(index, Mapper.bsonToJava(itemCls, null, v)); //ISSUE 1: Allows List<List<ItemClass>>
+						list.add(index, mapper.bsonToJava(itemCls, null, v)); //ISSUE 1: Allows List<List<ItemClass>>
 					else
 						list.add(index, v);
 					// retorn null, pq antes nao tinha nada lá
 					return null;
 				} else { // estou alterando um valor ja existente
 					if (backed)
-						return Mapper.javaToBson(list.set(index, Mapper.bsonToJava(itemCls, v)));
+						return mapper.javaToBson(list.set(index, mapper.bsonToJava(itemCls, v)));
 					else
 						return list.set(index, v);
 				}
 			} else {
 				// se meu index eh >= size, da IndexOutOfBounds, pq eh um array por de baixo
 				Object old = Array.get(array, index);
-				Array.set(array, index, Mapper.bsonToJava(itemCls, v));
-				return Mapper.javaToBson(old);
+				Array.set(array, index, mapper.bsonToJava(itemCls, v));
+				return mapper.javaToBson(old);
 			}
 		} finally {
 			modCount++;
@@ -163,11 +180,11 @@ public class MList extends MObject implements List<Object> {
 	public Object get(int index) {
 		if (list != null)
 			if (backed)
-				return Mapper.javaToBson(list.get(index));
+				return mapper.javaToBson(list.get(index));
 			else
 				return list.get(index);
 		else
-			return Mapper.javaToBson(Array.get(array, index));
+			return mapper.javaToBson(Array.get(array, index));
 	}
 
 	@Override
@@ -175,7 +192,7 @@ public class MList extends MObject implements List<Object> {
 		if (list != null)
 			try {
 				if (backed)
-					return Mapper.javaToBson(list.remove(index));
+					return mapper.javaToBson(list.remove(index));
 				else
 					return list.remove(index);
 			} finally {
