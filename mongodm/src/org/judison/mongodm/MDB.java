@@ -67,6 +67,8 @@ public class MDB {
 	private final DB database;
 	private Map<Object, MCollection<?>> collections = new HashMap<Object, MCollection<?>>();
 	private final DBCollection _cmd;
+	
+	final Mapper mapper;
 
 //	public MDB(String url) throws UnknownHostException {
 //		this(Mongo.connect(new DBAddress(url)));
@@ -77,6 +79,7 @@ public class MDB {
 //	}
 
 	public MDB(DB database) {
+		this.mapper = new Mapper();
 		this.database = database;
 		_cmd = database.getCollection("$cmd");
 		_cmd.setDBDecoderFactory(MDecoder.FACTORY);
@@ -196,7 +199,8 @@ public class MDB {
 		}
 	}
 
-	public void closeCursors() {
+	public void close() {
+		mapper.unmapAll();
 		synchronized (cursors) {
 			for (MCursor<?> cursor: cursors.toArray(new MCursor<?>[cursors.size()])) {
 				cursor.close();

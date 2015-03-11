@@ -198,7 +198,7 @@ public class MCollection<T> {
 			if (cls == MObject.class)
 				data = (MObject) object;
 			else
-				data = (MObject) Mapper.javaToBson(object);
+				data = (MObject) mdb.mapper.javaToBson(object);
 
 			WriteResult res = coll.save(data);
 			checkResult(res);
@@ -229,7 +229,7 @@ public class MCollection<T> {
 	}
 
 	public void remove(T object) throws MException {
-		MObject data = (MObject) Mapper.javaToBson(object);
+		MObject data = (MObject) mdb.mapper.javaToBson(object);
 		WriteResult res = coll.remove(new MObject("_id", data.get("_id")));
 		checkResult(res);
 	}
@@ -254,7 +254,7 @@ public class MCollection<T> {
 		if (data == null) // o bsonToJava faz isso, mas aqui eh mais rapido
 			return null;
 		else
-			return Mapper.bsonToJava(cls, null, data);
+			return mdb.mapper.bsonToJava(cls, null, data);
 	}
 
 	public MDB getMDB() {
