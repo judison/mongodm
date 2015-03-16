@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, Judison Oliveira Gil Filho <judison@gmail.com>
+ * Copyright (c) 2012-2015, Judison Oliveira Gil Filho <judison@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,7 @@ import com.mongodb.MongoException;
 public class MDB {
 
 	public static final String LICENCE =
-		"Copyright (c) 2012-2014, Judison Oliveira Gil Filho <judison@gmail.com>\n" +
+		"Copyright (c) 2012-2015, Judison Oliveira Gil Filho <judison@gmail.com>\n" +
 			"All rights reserved.\n" +
 			"\n" +
 			"Redistribution and use in source and binary forms, with or without\n" +
