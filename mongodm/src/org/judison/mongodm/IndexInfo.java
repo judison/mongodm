@@ -28,6 +28,7 @@
 package org.judison.mongodm;
 
 import org.judison.mongodm.annotations.Index;
+import org.judison.mongodm.annotations.TextIndex;
 
 final class IndexInfo {
 
@@ -50,6 +51,39 @@ final class IndexInfo {
 
 	public IndexInfo(Index index) {
 		this(index.name(), index.fields(), index.unique(), index.sparse());
+	}
+	
+	public IndexInfo(TextIndex index) {
+		MObject weights = null;
+		keys = new MObject();
+		for (String field: index.fields()) {
+			int weight = 1;
+			if (field.indexOf(':') >= 0) {
+				String[] parts = field.split(":");
+				field = parts[0];
+				weight = Integer.parseInt(parts[1]);
+			}
+			keys.put(field, "text");
+			if (weight != 1) {
+				if (weights == null)
+					weights = new MObject();
+				weights.put(field, weight);
+			}
+		}
+		
+		options = new MObject();
+		
+		String name = index.name();
+		if (name == null || name.isEmpty())
+			name = genIndexName(keys);
+		options.put("name", name);
+		
+		String lang = index.language();
+		if (lang != null && !lang.equals("none"))
+			options.put("language", lang);
+		
+		if (weights != null)
+			options.put("weights", weights);
 	}
 
 	public static MObject parseFields(String[] fields) {

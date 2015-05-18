@@ -211,6 +211,21 @@ public class Query {
 		return this;
 	}
 
+	public Query text(String query) {
+		MObject obj= new  MObject();
+		obj.put("$search", query);
+		filter("$text", Operator.EQUAL, obj);
+		return this;
+	}
+	
+	public Query text(String query, String lang) {
+		MObject obj= new  MObject();
+		obj.put("$search", query);
+		obj.put("$language", lang);
+		filter("$text", Operator.EQUAL, obj);
+		return this;
+	}
+	
 	public MObject toMObject() {
 		return conds;
 	}

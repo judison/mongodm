@@ -1,6 +1,5 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE project>
-<!-- * Copyright (c) 2012-2013, Judison Oliveira Gil Filho <judison@gmail.com>
+/*
+ * Copyright (c) 2012-2015, Judison Oliveira Gil Filho <judison@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -25,38 +24,24 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
--->
-<project name="MongODM" default="build_eclipse">
+ */
+package org.judison.mongodm.annotations;
 
-    <property file="mongodm.properties"/>
-    
-	<target name="build">
-		<delete file="mongodm.jar" failonerror="false" />
-		<delete file="mongodm-src.zip" failonerror="false" />
-		<delete dir="bin" failonerror="false" />
-		<mkdir dir="bin" />
-		<javac destdir="bin/">
-			<classpath path="../libs/mongo-2.9.1.jar" />
-			<src path="../src/" />
-		</javac>
-		<jar destfile="mongodm.jar">
-			<fileset dir="bin" />
-		</jar>
-		<jar destfile="mongodm-src.zip">
-			<fileset dir="../src" />
-		</jar>
-		<delete dir="bin" failonerror="false" />
-	</target>
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-	<target name="build_eclipse">
-		<delete file="mongodm.jar" failonerror="false" />
-		<delete file="mongodm-src.zip" failonerror="false" />
-		<jar destfile="mongodm-${version}.jar">
-			<fileset dir="../bin" />
-		</jar>
-		<jar destfile="mongodm-${version}-source.zip">
-			<fileset dir="../src" />
-		</jar>
-	</target>
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ ElementType.TYPE })
+public @interface TextIndex {
 
-</project>
+	String name() default "TextIndex";
+
+	/**
+	 * Fields for index, field[:weight] 
+	 */
+	String[] fields();
+	
+	String language() default "none";
+}

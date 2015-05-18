@@ -31,6 +31,7 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -39,8 +40,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
-
-import org.bson.util.StringRangeSet;
+import java.util.TreeSet;
 
 public class MList extends MObject implements List<Object> {
 
@@ -252,8 +252,14 @@ public class MList extends MObject implements List<Object> {
 
 	@Override
 	public Set<String> keySet() {
-		//TODO criar um set real, q tipo, permite remover, e etc...
-		return new StringRangeSet(size());
+		Set<String> res = new TreeSet<String>(new Comparator<String>() {
+			public int compare(String o1, String o2) {
+				return Integer.compare(Integer.parseInt(o1), Integer.parseInt(o2));
+			};
+		});
+		for (int i = 0; i < size(); i++)
+			res.add(String.valueOf(i));
+		return res;
 	}
 
 	@Override

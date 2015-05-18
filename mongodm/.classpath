@@ -12,10 +12,6 @@
 			<attribute name="owner.project.facets" value="java"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry exported="true" kind="lib" path="libs/mongo-2.12.4.jar" sourcepath="libs/mongo-src-2.12.4.zip">
-		<attributes>
-			<attribute name="org.eclipse.jst.component.dependency" value="../"/>
-		</attributes>
-	</classpathentry>
+	<classpathentry kind="lib" path="libs/mongo-java-driver-3.0.1.jar" sourcepath="libs/mongo-java-driver-3.0.1-sources.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -47,7 +47,6 @@ public class MCollection<T> {
 		this(mdb, cls, null);
 	}
 
-	@SuppressWarnings("deprecation")
 	public MCollection(MDB mdb, Class<T> cls, String entityName)
 			throws MException {
 		this.mdb = mdb;
@@ -68,7 +67,7 @@ public class MCollection<T> {
 		if (typeInfo != null)
 			for (IndexInfo idx : typeInfo.indexes)
 				try {
-					coll.ensureIndex(idx.keys, idx.options);
+					coll.createIndex(idx.keys, idx.options);
 				} catch (MongoException e) {
 					throw new MException(e);
 				}
@@ -137,22 +136,22 @@ public class MCollection<T> {
 		}
 	}
 
-	public MCursor<MObject> find(MObject query, MObject projection)
+	public MCursor<T> find(MObject query, MObject projection)
 			throws MException {
 		try {
 			DBCursor cursor = coll.find(query, projection);
-			return new MCursor<MObject>(this, MObject.class, cursor, true);
+			return new MCursor<T>(this, cls, cursor, false);
 		} catch (MongoException e) {
 			throw new MException(e);
 		}
 	}
 
-	public MCursor<MObject> find(Query query, Projection projection)
+	public MCursor<T> find(Query query, Projection projection)
 			throws MException {
 		try {
 			DBCursor cursor = coll.find(query.toMObject(),
 					projection.toMObject());
-			return new MCursor<MObject>(this, MObject.class, cursor, true);
+			return new MCursor<T>(this, cls, cursor, false);
 		} catch (MongoException e) {
 			throw new MException(e);
 		}
@@ -185,11 +184,10 @@ public class MCollection<T> {
 	}
 
 	private void checkResult(WriteResult res) throws MException {
-		@SuppressWarnings("deprecation")
-		// TODO verificar
-		String error = res.getError();
-		if (error != null)
-			throw new MException(error);
+		//@SuppressWarnings("deprecation")
+		//String error = res.getError();
+		//if (error != null)
+		//	throw new MException(error);
 	}
 
 	public void save(T object) throws MException {

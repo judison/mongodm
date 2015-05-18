@@ -122,6 +122,16 @@ public class MCursor<T> implements Iterable<T>, Iterator<T>, Closeable {
 			mdb.timerTotal += System.nanoTime() - t;
 		}
 	}
+	
+	public MCursor<T> sort(MObject sort) {
+		long t = System.nanoTime();
+		try {
+			dbCursor.sort(sort);
+			return this;
+		} finally {
+			mdb.timerTotal += System.nanoTime() - t;
+		}
+	}
 
 	public MCursor<T> limit(int n) {
 		long t = System.nanoTime();

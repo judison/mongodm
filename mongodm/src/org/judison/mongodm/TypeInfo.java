@@ -43,6 +43,7 @@ import org.judison.mongodm.annotations.Indexed;
 import org.judison.mongodm.annotations.Indexed.Order;
 import org.judison.mongodm.annotations.Indexes;
 import org.judison.mongodm.annotations.Property;
+import org.judison.mongodm.annotations.TextIndex;
 import org.judison.mongodm.annotations.Transient;
 
 final class TypeInfo {
@@ -93,6 +94,9 @@ final class TypeInfo {
 				Index index = cls.getAnnotation(Index.class);
 				if (index != null)
 					indexes.add(new IndexInfo(index));
+				TextIndex textIndex = cls.getAnnotation(TextIndex.class);
+				if (textIndex != null)
+					indexes.add(new IndexInfo(textIndex));
 				//===================
 
 				for (Field f: cls.getDeclaredFields()) {
