@@ -231,6 +231,11 @@ public class MCollection<T> {
 		WriteResult res = coll.remove(new MObject("_id", data.get("_id")));
 		checkResult(res);
 	}
+	
+	public void remove(Query query) throws MException {
+		WriteResult res = coll.remove(query.toMObject());
+		checkResult(res);
+	}
 
 	public void removeById(Object id) throws MException {
 		WriteResult res = coll.remove(new MObject("_id", id));
