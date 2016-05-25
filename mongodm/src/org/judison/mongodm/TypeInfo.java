@@ -31,9 +31,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.judison.mongodm.annotations.Embedded;
 import org.judison.mongodm.annotations.Entity;
@@ -42,6 +41,7 @@ import org.judison.mongodm.annotations.Index;
 import org.judison.mongodm.annotations.Indexed;
 import org.judison.mongodm.annotations.Indexed.Order;
 import org.judison.mongodm.annotations.Indexes;
+import org.judison.mongodm.annotations.Overflow;
 import org.judison.mongodm.annotations.Property;
 import org.judison.mongodm.annotations.TextIndex;
 import org.judison.mongodm.annotations.Transient;
@@ -50,8 +50,9 @@ final class TypeInfo {
 
 	final String entityName;
 	final Constructor<?> constructor;
-	final PropertyInfo[] properties;
+	final LinkedHashMap<String, PropertyInfo> properties;
 	final PropertyInfo idField;
+	final PropertyInfo overflowField;
 	final boolean isEntity;
 	final boolean isEmbedded;
 	final IndexInfo[] indexes;
@@ -80,7 +81,9 @@ final class TypeInfo {
 			constructor.setAccessible(true);
 
 			PropertyInfo idField = null;
-			Map<String, PropertyInfo> fields = new HashMap<String, PropertyInfo>();
+			PropertyInfo overflowField = null;
+
+			properties = new LinkedHashMap<String, PropertyInfo>();
 
 			List<IndexInfo> indexes = new ArrayList<IndexInfo>();
 
@@ -130,11 +133,23 @@ final class TypeInfo {
 							throw new IllegalStateException("@Id and @Property with a different name other than '_id' at " + f.getDeclaringClass().getName() + "." + f.getName());
 					}
 
-					if (fields.containsKey(name))
+					if (f.isAnnotationPresent(Overflow.class)) {
+
+						if (prop != null)
+							throw new IllegalStateException("@Overflow field " + f.getDeclaringClass().getName() + "." + f.getName() + " can't be a @Property");
+						if (overflowField != null)
+							throw new IllegalStateException("Duplicated @Overflow field at " + f.getDeclaringClass().getName() + "." + f.getName());
+						if (!MObject.class.isAssignableFrom(f.getType()))
+							throw new IllegalStateException("@Overflow field " + f.getDeclaringClass().getName() + "." + f.getName() + " must be a MObject");
+
+						overflowField = new PropertyInfo(f, name, prop);
+					}
+
+					if (properties.containsKey(name))
 						throw new IllegalStateException("Duplicated field '" + name + "' at " + f.getDeclaringClass().getName() + "." + f.getName());
 
 					PropertyInfo info = new PropertyInfo(f, name, prop);
-					fields.put(name, info);
+					properties.put(name, info);
 
 					if (name.equals("_id"))
 						idField = info;
@@ -154,7 +169,7 @@ final class TypeInfo {
 			}
 
 			this.idField = idField;
-			this.properties = fields.values().toArray(new PropertyInfo[fields.size()]);
+			this.overflowField = overflowField;
 			this.indexes = indexes.toArray(new IndexInfo[indexes.size()]);
 		} catch (SecurityException e) {
 			throw new RuntimeException(e);

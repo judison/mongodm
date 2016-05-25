@@ -200,7 +200,6 @@ public class MDB {
 	}
 
 	public void close() {
-		mapper.unmapAll();
 		synchronized (cursors) {
 			for (MCursor<?> cursor: cursors.toArray(new MCursor<?>[cursors.size()])) {
 				cursor.close();

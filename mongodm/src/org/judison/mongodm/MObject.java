@@ -27,10 +27,10 @@
  */
 package org.judison.mongodm;
 
-import java.util.ArrayList;
+import java.util.AbstractSet;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.Map.Entry;
@@ -52,12 +52,13 @@ import com.mongodb.util.JSON;
 public class MObject implements DBObject, BSONObject {
 
 	public static MObject parseJSON(String str) {
-		return (MObject) JSON.parse(str, MDecoder.FACTORY.create()
-				.getDBCallback(null));
+		return (MObject)JSON.parse(str, MDecoder.FACTORY.create()
+			.getDBCallback(null));
 	}
 
 	private Mapper mapper;
 	private Object obj;
+	private TypeInfo typeInfo;
 
 	private LinkedHashMap<String, Object> map;
 
@@ -76,11 +77,10 @@ public class MObject implements DBObject, BSONObject {
 	}
 
 	MObject(TypeInfo typeInfo, Mapper mapper, Object obj) {
-		this(true);
+		this(false);
 		this.obj = obj;
+		this.typeInfo = typeInfo;
 		this.mapper = mapper;
-		for (PropertyInfo pi : typeInfo.properties)
-			map.put(pi.name, pi);
 	}
 
 	MObject(boolean isMObject) {
@@ -92,35 +92,37 @@ public class MObject implements DBObject, BSONObject {
 		if (this.obj != null)
 			throw new IllegalStateException("MObject already mapped");
 		this.obj = obj;
+		this.typeInfo = typeInfo;
 		this.mapper = mapper;
 
-		for (PropertyInfo pi : typeInfo.properties) {
-			Object bsonValue = map.put(pi.name, pi);
-			setField(pi, obj, mapper, bsonValue);
-		}
+		Map<String, Object> map = this.map;
+		this.map = null;
+
+		for (PropertyInfo pi: typeInfo.properties.values())
+			if (map.containsKey(pi.name)) {
+				Object bsonValue = map.remove(pi.name);
+				setField(pi, obj, mapper, bsonValue);
+			}
+		for (Entry<String, Object> e: map.entrySet())
+			put(e.getKey(), e.getValue());
 	}
 
 	void unmap() {
 		if (this.obj == null)
 			return;
-		synchronized (map) {
-			List<String> props = new ArrayList<String>(map.keySet());
-			for (String name : props) {
-				Object value = map.get(name);
-				
-				if (value instanceof PropertyInfo) 
-					try {
-						PropertyInfo pi = (PropertyInfo) value;
-						value = getField(pi, obj, mapper);
-						map.put(name, value);
-					} catch (Throwable e) {
-						e.printStackTrace(); //TODO melhorar
-						map.remove(name);
-					}
-			}
-			this.obj = null;
-			this.mapper = null;
-		}
+
+		LinkedHashMap<String, Object> map = new LinkedHashMap<String, Object>();
+		for (PropertyInfo pi: typeInfo.properties.values())
+			map.put(pi.name, getField(pi, obj, mapper)); // get(pi.name);
+		MObject overflow = mapper.getOverflow(obj, typeInfo, false);
+		if (overflow != null)
+			for (String name: overflow.keySet())
+				map.put(name, overflow.get(name));
+
+		this.map = map;
+		this.obj = null;
+		this.typeInfo = null;
+		this.mapper = null;
 	}
 
 	public boolean isBacked() {
@@ -163,103 +165,102 @@ public class MObject implements DBObject, BSONObject {
 		if (value instanceof byte[])
 			return;
 		if (value instanceof BSONTimestamp || value instanceof Symbol
-				|| value instanceof Code || value instanceof CodeWScope)
+			|| value instanceof Code || value instanceof CodeWScope)
 			return;
 
 		throw new IllegalArgumentException(getClass().getSimpleName()
-				+ " can't store a " + value.getClass().getName());
+			+ " can't store a " + value.getClass().getName());
 	}
 
 	@Override
 	public Object put(String name, Object value) {
 		checkValue(value);
-		synchronized (map) {
-			Object old = map.get(name);
-			if (old instanceof PropertyInfo)
-				try {
-					PropertyInfo pi = (PropertyInfo) old;
-					old = getField(pi, obj, mapper);
-					setField(pi, obj, mapper, value);
-
-					return old;
-				} catch (Throwable e) {
-					throw new RuntimeException(e);
-				}
-
-			return map.put(name, value);
-		}
+		if (obj != null) {
+			PropertyInfo pi = typeInfo.properties.get(name);
+			if (pi != null) {
+				Object old = getField(pi, obj, mapper);
+				setField(pi, obj, mapper, value);
+				return old;
+			} else {
+				MObject overflow = mapper.getOverflow(obj, typeInfo, true);
+				return overflow.put(name, value);
+			}
+		} else
+			synchronized (map) {
+				return map.put(name, value);
+			}
 	}
 
 	@Override
 	public void putAll(BSONObject o) {
-		for (String name : o.keySet())
+		for (String name: o.keySet())
 			put(name, o.get(name));
 	}
 
 	@SuppressWarnings("rawtypes")
 	@Override
 	public void putAll(Map m) {
-		for (Object o : m.entrySet()) {
-			Entry e = (Entry) o;
+		for (Object o: m.entrySet()) {
+			Entry e = (Entry)o;
 			put(String.valueOf(e.getKey()), e.getValue());
 		}
 	}
 
 	@Override
 	public Object get(String name) {
-		synchronized (map) {
-			Object value = map.get(name);
-			if (value instanceof PropertyInfo)
-				try {
-					PropertyInfo pi = (PropertyInfo) value;
-					value = getField(pi, obj, mapper);
-					return value;
-				} catch (Throwable e) {
-					throw new RuntimeException(e);
-				}
-
-			return value;
-		}
+		if (obj != null) {
+			PropertyInfo pi = typeInfo.properties.get(name);
+			if (pi != null)
+				return getField(pi, obj, mapper);
+			else {
+				MObject overflow = mapper.getOverflow(obj, typeInfo, false);
+				if (overflow != null)
+					return overflow.get(name);
+				else
+					return null;
+			}
+		} else
+			synchronized (map) {
+				return map.get(name);
+			}
 	}
 
 	@SuppressWarnings("rawtypes")
 	@Override
 	public Map toMap() {
-		synchronized (map) {
-			Map<String, Object> resp = new LinkedHashMap<String, Object>();
-			for (Entry<String, Object> e : map.entrySet()) {
-				String name = e.getKey();
-				Object value = map.get(name);
-				if (value instanceof PropertyInfo)
-					try {
-						PropertyInfo pi = (PropertyInfo) value;
-						value = getField(pi, obj, mapper);
-					} catch (Throwable ex) {
-						throw new RuntimeException(ex);
-					}
-				resp.put(name, value);
+		Map<String, Object> resp = new LinkedHashMap<String, Object>();
+		if (obj != null) {
+			for (PropertyInfo pi: typeInfo.properties.values())
+				resp.put(pi.name, getField(pi, obj, mapper)); // get(pi.name);
+			MObject overflow = mapper.getOverflow(obj, typeInfo, false);
+			if (overflow != null)
+				for (String name: overflow.keySet())
+					resp.put(name, overflow.get(name));
+		} else
+			synchronized (map) {
+				for (Entry<String, Object> e: map.entrySet())
+					resp.put(e.getKey(), e.getValue());
 			}
-			return resp;
-		}
+		return resp;
 	}
 
 	@Override
 	public Object removeField(String name) {
-		synchronized (map) {
-			Object value = map.get(name);
-			if (value instanceof PropertyInfo)
-				try {
-					PropertyInfo pi = (PropertyInfo) value;
-					value = getField(pi, obj, mapper);
-					setField(pi, obj, mapper, null);
-					return value;
-				} catch (Throwable e) {
-					throw new RuntimeException(e);
-				}
-
-			map.remove(name);
-			return value;
-		}
+		if (obj != null) {
+			// Try property
+			PropertyInfo pi = typeInfo.properties.get(name);
+			if (pi != null)
+				return getField(pi, obj, mapper);
+			// Try overflow
+			MObject overflow = mapper.getOverflow(obj, typeInfo, false);
+			if (overflow != null)
+				return overflow.removeField(name);
+			// nops
+			return null;
+		} else
+			synchronized (map) {
+				return map.remove(name);
+			}
 	}
 
 	@Override
@@ -270,17 +271,88 @@ public class MObject implements DBObject, BSONObject {
 
 	@Override
 	public boolean containsField(String name) {
-		synchronized (map) {
-			// TODO: ver se eh null, caso seja um PropertyInfo
-			return map.containsKey(name);
+		if (obj != null) {
+			// Try property
+			PropertyInfo pi = typeInfo.properties.get(name);
+			if (pi != null)
+				return true;
+			// Try overflow
+			MObject overflow = mapper.getOverflow(obj, typeInfo, false);
+			if (overflow != null)
+				return overflow.containsField(name);
+			// nops
+			return false;
+		} else
+			synchronized (map) {
+				return map.containsKey(name);
+			}
+	}
+
+	private static class ConcatSet<E> extends AbstractSet<E> {
+
+		private final Set<E> set1;
+		private final Set<E> set2;
+
+		public ConcatSet(Set<E> set1, Set<E> set2) {
+			this.set1 = set1;
+			this.set2 = set2;
 		}
+
+		@Override
+		public int size() {
+			return set1.size() + set2.size();
+		}
+
+		@Override
+		public boolean isEmpty() {
+			return set1.isEmpty() && set2.isEmpty();
+		}
+
+		@Override
+		public Iterator<E> iterator() {
+			return new Iterator<E>() {
+
+				Iterator<E> iter1 = set1.iterator();
+				Iterator<E> iter2 = set2.iterator();
+
+				@Override
+				public boolean hasNext() {
+					if (iter1.hasNext())
+						return true;
+					else
+						return iter2.hasNext();
+				}
+
+				@Override
+				public E next() {
+					if (iter1.hasNext())
+						return iter1.next();
+					else
+						return iter2.next();
+				}
+
+			};
+		}
+
+		@Override
+		public boolean contains(Object object) {
+			return set1.contains(object) || set2.contains(object);
+		}
+
 	}
 
 	@Override
 	public Set<String> keySet() {
-		synchronized (map) {
-			return map.keySet();
-		}
+		if (obj != null) {
+			MObject overflow = mapper.getOverflow(obj, typeInfo, false);
+			if (overflow != null)
+				return new ConcatSet<String>(typeInfo.properties.keySet(), overflow.keySet());
+			else
+				return typeInfo.properties.keySet();
+		} else
+			synchronized (map) {
+				return map.keySet();
+			}
 	}
 
 	private boolean partialObject;
@@ -296,10 +368,10 @@ public class MObject implements DBObject, BSONObject {
 	}
 
 	private static void setField(PropertyInfo pi, Object object, Mapper mapper,
-			Object bsonValue) {
+		Object bsonValue) {
 		try {
 			pi.field.set(object,
-					mapper.bsonToJava(pi.cls, pi.itemCls, bsonValue));
+				mapper.bsonToJava(pi.cls, pi.itemCls, bsonValue));
 		} catch (IllegalAccessException e) {
 			throw new RuntimeException(e);
 		}
@@ -324,7 +396,7 @@ public class MObject implements DBObject, BSONObject {
 			String p1 = name.substring(dotIdx + 1);
 			Object aux = get(p0); // otimizar depois...
 			if (aux instanceof MObject)
-				return ((MObject) aux).deepGet(p1);
+				return ((MObject)aux).deepGet(p1);
 			else
 				return null; // ou aux eh null, ou nao eh um { }, entao...
 		} else
@@ -342,7 +414,7 @@ public class MObject implements DBObject, BSONObject {
 				aux = new MObject();
 				put(p0, aux); // otimizar depois...
 			}
-			((MObject) aux).deepPut(p1, value);
+			((MObject)aux).deepPut(p1, value);
 		} else
 			put(name, value); // otimizar depois...
 	}
@@ -354,7 +426,7 @@ public class MObject implements DBObject, BSONObject {
 			String p1 = name.substring(dotIdx + 1);
 			Object aux = get(p0); // otimizar depois...
 			if (aux instanceof MObject)
-				return ((MObject) aux).deepContainsField(p1);
+				return ((MObject)aux).deepContainsField(p1);
 			else
 				return false; // ou aux eh null, ou nao eh um { }, entao...
 		} else
@@ -368,7 +440,7 @@ public class MObject implements DBObject, BSONObject {
 			String p1 = name.substring(dotIdx + 1);
 			Object aux = get(p0); // otimizar depois...
 			if (aux instanceof MObject)
-				return ((MObject) aux).deepRemove(p1);
+				return ((MObject)aux).deepRemove(p1);
 			else
 				return null; // ou aux eh null, ou nao eh um { }, entao...
 		} else

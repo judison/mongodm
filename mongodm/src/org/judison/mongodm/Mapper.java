@@ -110,7 +110,29 @@ public final class Mapper {
 
 	//========================================================================
 
-	private WeakHashMap<Object, MObject> mobjects = new WeakHashMap<Object, MObject>();
+	private WeakHashMap<Object, MObject> overflows = new WeakHashMap<Object, MObject>();
+	
+	MObject getOverflow(Object obj, TypeInfo typeInfo, boolean force) {
+		if (typeInfo.overflowField != null) 
+			try {
+				MObject overflow = (MObject)typeInfo.overflowField.field.get(obj);
+				if (force && overflow == null) {
+					overflow = new MObject();
+					typeInfo.overflowField.field.set(obj, overflow);
+				}
+				return overflow;
+			} catch (IllegalAccessException e) {
+				throw new RuntimeException(e);
+			}
+		else {
+			MObject overflow = overflows.get(obj);
+			if (force && overflow == null) {
+				overflow = new MObject();
+				overflows.put(obj, overflow);
+			}
+			return overflow;
+		}
+	}
 
 	Mapper() {}
 
@@ -174,9 +196,9 @@ public final class Mapper {
 
 				mlist.mapToObject(cls.isArray(), this, javaObj, itemCls);
 
-				synchronized (mobjects) {
-					mobjects.put(javaObj, mlist);
-				}
+				//synchronized (mobjects) {
+				//	mobjects.put(javaObj, mlist);
+				//}
 
 				return (T)javaObj;
 			}
@@ -223,9 +245,9 @@ public final class Mapper {
 				// faço meu MObject ficar mapeado
 				mobj.mapToObject(typeInfo, this, javaObj);
 			}
-			synchronized (mobjects) {
-				mobjects.put(javaObj, mobj);
-			}
+			//synchronized (mobjects) {
+			//	mobjects.put(javaObj, mobj);
+			//}
 
 			return (T)javaObj;
 
@@ -254,14 +276,7 @@ public final class Mapper {
 			return ((Enum<?>)javaValue).name();
 
 		if ((javaValue instanceof List) || cls.isArray())
-			synchronized (mobjects) {
-				MList mlist = (MList)mobjects.get(javaValue);
-				if (mlist == null) {
-					mlist = new MList(cls.isArray(), javaValue, this, pi == null ? null : pi.itemCls);//TODO nao usar null, se pi == null
-					mobjects.put(javaValue, mlist);
-				}
-				return mlist;
-			}
+			return new MList(cls.isArray(), javaValue, this, pi == null ? null : pi.itemCls);//TODO nao usar null, se pi == null
 
 		if (javaValue instanceof BSONObject)
 			return javaValue;
@@ -275,24 +290,10 @@ public final class Mapper {
 				throw new IllegalArgumentException("Can't map " + cls.getName() + " to MObject", e);
 			}
 
-		synchronized (mobjects) {
-			MObject mobj = mobjects.get(javaValue);
-			if (mobj == null) {
-				mobj = new MObject(typeInfo, this, javaValue);
-				mobjects.put(javaValue, mobj);
-			}
-			return mobj;
-		}
+		return new MObject(typeInfo, this, javaValue);
 	}
 
-	public void unmapAll() {
-		synchronized (mobjects) {
-			// avoid concurrent mod
-			MObject[] all = mobjects.values().toArray(new MObject[mobjects.size()]);
-			for (MObject mobj: all)
-				mobj.unmap();
-			mobjects.clear();
-		}
-	}
+	@Deprecated
+	public void unmapAll() {}
 
 }
